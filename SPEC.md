@@ -49,13 +49,24 @@
 - 列表頁顯示使用者所有 StylePreset。
 - 新增/編輯表單（呼叫上述 API），刪除需二次確認。
 
-#### 4. 動態表單 Key-Value 擴充描述 `[ ]`
+#### 4. 動態表單 Key-Value 擴充描述 — API `[x]`
 **背景**：使用者要能在基礎風格之外，動態新增任意數量的 key:value 描述欄位
 （例如 主體/背景/光線），組合進最終 prompt。
 **功能規格**：
-- UI 提供「新增欄位」按鈕，可自由輸入 key、value，可拖曳排序、可刪除。
-- 產圖前，後端依 `base_prompt + 依序串接的 key: value` 組成 `final_prompt`。
-- 欄位可選擇儲存為模板（關聯到某個 StylePreset）或僅供本次使用（一次性）。
+- CRUD API：`/api/style-presets/:id/fields`（GET/POST）、
+  `/api/style-presets/:id/fields/:fieldId`（PATCH/DELETE），所有權透過
+  `stylePresetId + userId` 雙重驗證。
+- 欄位 `order` 決定串接順序，`GET` 依 `order` 排序回傳。
+- `lib/prompt.ts` 的 `buildFinalPrompt(basePrompt, fields)` 已存在（bootstrap
+  階段示範用），純函式組合 `basePrompt + 依序串接的 key: value`。
+- 輸入驗證：`lib/promptField.ts` 的 `validatePromptFieldInput`（純函式，已測試）。
+- 一次性欄位（不存模板）不需要後端持久化，由前端直接帶入產圖請求即可，故不在此 API 範疇。
+
+#### 4b. 動態表單 Key-Value 擴充描述 — UI `[ ]`
+**背景**：4 號項目先完成 API，UI（新增/排序/刪除欄位、一次性 vs 模板切換）為延伸項目。
+**功能規格**：
+- 表單可動態新增/刪除 key:value 列，支援拖曳排序（呼叫 `order` 欄位更新）。
+- 切換「儲存為模板」（呼叫上述 API）或「僅本次使用」（不呼叫 API，前端暫存）。
 
 #### 5. AI 圖片生成 Provider 抽象層 `[ ]`
 **背景**：免費額度容易用完，需要可切換/擴充多個 provider，並記錄用量。
