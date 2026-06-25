@@ -100,13 +100,13 @@ export default function StylePresetsPage() {
       <h1>風格指令</h1>
       {error && <p role="alert">{error}</p>}
 
-      <form onSubmit={handleSubmit}>
-        <h2>{editingId ? "編輯風格指令" : "新增風格指令"}</h2>
-        <div>
+      <form onSubmit={handleSubmit} className="card">
+        <h2 style={{ marginTop: 0 }}>{editingId ? "編輯風格指令" : "新增風格指令"}</h2>
+        <div className="field">
           <label htmlFor="preset-name">名稱</label>
           <input id="preset-name" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
-        <div>
+        <div className="field">
           <label htmlFor="preset-base-prompt">基礎 Prompt</label>
           <textarea
             id="preset-base-prompt"
@@ -115,14 +115,16 @@ export default function StylePresetsPage() {
             required
           />
         </div>
-        <button type="submit" disabled={saving}>
-          {editingId ? "儲存變更" : "新增"}
-        </button>
-        {editingId && (
-          <button type="button" onClick={startCreate} disabled={saving}>
-            取消編輯
+        <div className="button-row">
+          <button type="submit" disabled={saving}>
+            {editingId ? "儲存變更" : "新增"}
           </button>
-        )}
+          {editingId && (
+            <button type="button" className="secondary" onClick={startCreate} disabled={saving}>
+              取消編輯
+            </button>
+          )}
+        </div>
       </form>
 
       <h2>已建立的風格指令</h2>
@@ -131,18 +133,24 @@ export default function StylePresetsPage() {
       ) : presets.length === 0 ? (
         <p>尚未建立任何風格指令。</p>
       ) : (
-        <ul>
+        <ul className="card-list">
           {presets.map((preset) => (
-            <li key={preset.id}>
+            <li className="card-list-item" key={preset.id}>
               <strong>{preset.name}</strong>
               <p>{preset.basePrompt}</p>
-              <button type="button" onClick={() => startEdit(preset)}>
-                編輯
-              </button>
-              <button type="button" onClick={() => handleDelete(preset.id)}>
-                刪除
-              </button>
-              <a href={`/app/style-presets/${preset.id}/fields`}>管理動態欄位</a>
+              <div className="button-row">
+                <button type="button" className="secondary" onClick={() => startEdit(preset)}>
+                  編輯
+                </button>
+                <button type="button" className="danger" onClick={() => handleDelete(preset.id)}>
+                  刪除
+                </button>
+                <a href={`/app/style-presets/${preset.id}/fields`}>
+                  <button type="button" className="secondary">
+                    管理動態欄位
+                  </button>
+                </a>
+              </div>
             </li>
           ))}
         </ul>

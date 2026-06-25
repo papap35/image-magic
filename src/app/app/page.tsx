@@ -6,9 +6,9 @@ export default async function AppHomePage() {
 
   return (
     <main>
-      <h1>我的圖庫</h1>
+      <h1>Image Magic</h1>
       <p>登入身分：{session?.user?.name ?? "未知使用者"}</p>
-      <nav>
+      <nav className="app-nav">
         <a href="/app/generate">產生圖片</a>
         <a href="/app/images">圖庫</a>
         <a href="/app/style-presets">風格指令</a>

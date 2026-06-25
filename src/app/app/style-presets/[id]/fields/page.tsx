@@ -127,12 +127,12 @@ export default function PromptFieldsPage({ params }: { params: { id: string } })
       <p>在基礎風格之外，新增任意數量的 key:value 描述欄位，依順序串接進最終 prompt。</p>
       {error && <p role="alert">{error}</p>}
 
-      <form onSubmit={handleAdd}>
-        <div>
+      <form onSubmit={handleAdd} className="card">
+        <div className="field">
           <label htmlFor="field-key">Key</label>
           <input id="field-key" value={key} onChange={(e) => setKey(e.target.value)} required />
         </div>
-        <div>
+        <div className="field">
           <label htmlFor="field-value">Value</label>
           <input id="field-value" value={value} onChange={(e) => setValue(e.target.value)} required />
         </div>
@@ -146,19 +146,26 @@ export default function PromptFieldsPage({ params }: { params: { id: string } })
       ) : fields.length === 0 ? (
         <p>尚未新增任何欄位。</p>
       ) : (
-        <ol>
+        <ol className="card-list" style={{ paddingLeft: 0 }}>
           {fields.map((field, index) => (
-            <li key={field.id}>
+            <li className="card-list-item" key={field.id} style={{ listStyle: "none" }}>
               <strong>{field.key}</strong>: {field.value}
-              <button type="button" onClick={() => handleMove(index, -1)} disabled={index === 0}>
-                上移
-              </button>
-              <button type="button" onClick={() => handleMove(index, 1)} disabled={index === fields.length - 1}>
-                下移
-              </button>
-              <button type="button" onClick={() => handleDelete(field.id)}>
-                刪除
-              </button>
+              <div className="button-row">
+                <button type="button" className="secondary" onClick={() => handleMove(index, -1)} disabled={index === 0}>
+                  ↑ 上移
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => handleMove(index, 1)}
+                  disabled={index === fields.length - 1}
+                >
+                  ↓ 下移
+                </button>
+                <button type="button" className="danger" onClick={() => handleDelete(field.id)}>
+                  刪除
+                </button>
+              </div>
             </li>
           ))}
         </ol>

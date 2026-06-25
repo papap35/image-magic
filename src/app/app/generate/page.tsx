@@ -198,22 +198,24 @@ export default function GeneratePage() {
       {error && <p role="alert">{error}</p>}
 
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="provider-select">AI Provider</label>
-          <select id="provider-select" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
-            {providers.map((provider) => (
-              <option key={provider.id} value={provider.id}>
-                {provider.label}
-              </option>
-            ))}
-          </select>
+        <div className="card">
+          <div className="field">
+            <label htmlFor="provider-select">AI Provider</label>
+            <select id="provider-select" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {selectedProvider && (
             <div>
               {hasSavedKey ? (
-                <p>已儲存此 provider 的 API Key。</p>
+                <p className="hint">已儲存此 provider 的 API Key。</p>
               ) : (
-                <>
+                <div className="field">
                   <label htmlFor="provider-api-key">你的 {selectedProvider.label} API Key</label>
                   <input
                     id="provider-api-key"
@@ -222,17 +224,19 @@ export default function GeneratePage() {
                     onChange={(e) => setByokKeyInput(e.target.value)}
                     placeholder="輸入你自己的 API Key"
                   />
-                  <button type="button" onClick={handleSaveKey} disabled={savingKey}>
-                    {savingKey ? "儲存中..." : "儲存 API Key"}
-                  </button>
-                </>
+                  <div className="button-row">
+                    <button type="button" onClick={handleSaveKey} disabled={savingKey}>
+                      {savingKey ? "儲存中..." : "儲存 API Key"}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
         </div>
 
-        <div>
-          <label htmlFor="enhance-prompt-checkbox">
+        <div className="card">
+          <label className="checkbox-label" htmlFor="enhance-prompt-checkbox">
             <input
               id="enhance-prompt-checkbox"
               type="checkbox"
@@ -242,7 +246,7 @@ export default function GeneratePage() {
             出圖前先用 Claude 改寫 prompt（讓描述更生動詳細；Claude 本身不出圖，只負責改寫文字）
           </label>
           {enhancePrompt && (
-            <div>
+            <div className="field" style={{ marginTop: 12 }}>
               <label htmlFor="enhance-password">共用密碼</label>
               <input
                 id="enhance-password"
@@ -255,79 +259,83 @@ export default function GeneratePage() {
           )}
         </div>
 
-        <div>
-          <label htmlFor="preset-select">套用風格指令（選填）</label>
-          <select id="preset-select" value={presetId} onChange={(e) => setPresetId(e.target.value)}>
-            <option value="">不套用</option>
-            {presets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {templateFields.length > 0 && (
-          <div>
-            <p>模板欄位（依風格指令固定帶入）：</p>
-            <ul>
-              {templateFields.map((field) => (
-                <li key={field.id}>
-                  {field.key}: {field.value}
-                </li>
+        <div className="card">
+          <div className="field">
+            <label htmlFor="preset-select">套用風格指令（選填）</label>
+            <select id="preset-select" value={presetId} onChange={(e) => setPresetId(e.target.value)}>
+              <option value="">不套用</option>
+              {presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name}
+                </option>
               ))}
-            </ul>
+            </select>
           </div>
-        )}
 
-        <div>
-          <p>一次性欄位（僅本次使用，不會儲存）：</p>
-          <ul>
-            {extraFields.map((field, index) => (
-              <li key={`${field.key}-${index}`}>
-                {field.key}: {field.value}
-                <button type="button" onClick={() => removeExtraField(index)}>
-                  移除
-                </button>
-              </li>
-            ))}
-          </ul>
-          <input
-            value={extraKey}
-            onChange={(e) => setExtraKey(e.target.value)}
-            placeholder="key（例如：主體）"
-          />
-          <input
-            value={extraValue}
-            onChange={(e) => setExtraValue(e.target.value)}
-            placeholder="value（例如：一隻貓）"
-          />
-          <button type="button" onClick={addExtraField}>
-            新增一次性欄位
+          {templateFields.length > 0 && (
+            <div className="field">
+              <label>模板欄位（依風格指令固定帶入）</label>
+              {templateFields.map((field) => (
+                <span className="tag-pill" key={field.id}>
+                  {field.key}: {field.value}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="field">
+            <label>一次性欄位（僅本次使用，不會儲存）</label>
+            <div>
+              {extraFields.map((field, index) => (
+                <span className="tag-pill" key={`${field.key}-${index}`}>
+                  {field.key}: {field.value}
+                  <button type="button" onClick={() => removeExtraField(index)}>
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="button-row">
+              <input
+                value={extraKey}
+                onChange={(e) => setExtraKey(e.target.value)}
+                placeholder="key（例如：主體）"
+                style={{ flex: 1 }}
+              />
+              <input
+                value={extraValue}
+                onChange={(e) => setExtraValue(e.target.value)}
+                placeholder="value（例如：一隻貓）"
+                style={{ flex: 1 }}
+              />
+              <button type="button" className="secondary" onClick={addExtraField}>
+                新增
+              </button>
+            </div>
+          </div>
+
+          <div className="field">
+            <label>最終 Prompt 預覽</label>
+            <p className="prompt-preview">{finalPrompt || "（尚未輸入任何內容）"}</p>
+          </div>
+
+          <button type="submit" disabled={submitting}>
+            {submitting ? "生成中..." : "開始生成"}
           </button>
         </div>
-
-        <div>
-          <p>最終 Prompt 預覽：</p>
-          <p>{finalPrompt || "（尚未輸入任何內容）"}</p>
-        </div>
-
-        <button type="submit" disabled={submitting}>
-          {submitting ? "生成中..." : "開始生成"}
-        </button>
       </form>
 
       <h2>生成紀錄</h2>
       {jobs.length === 0 ? (
         <p>尚未有任何生成請求。</p>
       ) : (
-        <ul>
+        <ul className="card-list">
           {jobs.map((job) => (
-            <li key={job.id}>
-              <p>狀態：{job.status}</p>
-              <p>Prompt：{job.promptFinal}</p>
+            <li className="card-list-item" key={job.id}>
+              <span className={`status-badge ${job.status}`}>{job.status}</span>
+              <p>{job.promptFinal}</p>
               {job.status === "success" && job.resultUrl && (
-                <img src={job.resultUrl} alt={job.promptFinal} width={160} />
+                <img className="thumb" src={job.resultUrl} alt={job.promptFinal} width={160} />
               )}
               {job.status === "failed" && <p role="alert">錯誤：{job.error}</p>}
             </li>
