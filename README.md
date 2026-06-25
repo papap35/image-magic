@@ -43,6 +43,33 @@ npm run build    # production build
 
 ## CI/CD
 
-GitHub Actions（`.github/workflows/ci.yml`）在每次 PR 與 push 到 `main` 時，
-會啟動一個 PostgreSQL service container，執行 lint → prisma generate →
-prisma migrate deploy → 單元測試 → build。
+GitHub Actions（`.github/workflows/ci.yml`）兩個 job：
+
+1. **`test-and-build`**：每次 PR 與 push 到 `main` 都會執行。啟動一個
+   `pgvector/pgvector:pg16` service container，依序執行
+   lint → prisma migrate deploy（含 `npm ci` 的 `postinstall` 已先跑過
+   `prisma generate`）→ 單元測試 → build。
+2. **`deploy-production`**：只在 push 到 `main` 且上一個 job 成功後執行，會：
+   - 用 `PROD_DATABASE_URL` 對生產資料庫跑 `prisma migrate deploy`。
+   - 用 Vercel CLI（`vercel pull` → `vercel build --prod` →
+     `vercel deploy --prebuilt --prod`）部署到 Vercel production。
+
+### 部署到 Vercel 需要的設定
+
+**GitHub repo secrets**（Settings → Secrets and variables → Actions）：
+
+| Secret | 說明 |
+|---|---|
+| `VERCEL_TOKEN` | Vercel 帳號的 Personal Access Token |
+| `VERCEL_ORG_ID` | 在 Vercel 專案目錄執行 `vercel link` 後，`.vercel/project.json` 裡的 `orgId` |
+| `VERCEL_PROJECT_ID` | 同上的 `projectId` |
+| `PROD_DATABASE_URL` | 生產環境 PostgreSQL 連線字串，**資料庫需啟用 `pgvector` extension**（例如 Neon、Supabase 或自架 `pgvector/pgvector` 都支援） |
+
+**Vercel 專案的環境變數**（Vercel Dashboard → Project → Settings →
+Environment Variables，設定在 `Production` 環境）：
+`DATABASE_URL`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`NEXTAUTH_URL`
+（正式網域）、`NEXTAUTH_SECRET`、`AI_IMAGE_PROVIDER_API_KEY`，內容與
+`.env.example` 對應。
+
+設定好以上 secrets 與環境變數後，PR 合併進 `main` 即會自動跑完整 CI，
+通過後自動部署到 Vercel production，不需要手動操作。
