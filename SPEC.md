@@ -16,7 +16,7 @@
 
 ### P0 — 帳號與資料安全（必做，理由：沒有登入與資料隔離，後續功能無意義）
 
-#### 1. Google OAuth 登入 `[ ]`
+#### 1. Google OAuth 登入 `[x]`
 **背景**：使用者要用自己的 Google 帳號登入，資料記錄在自己帳號下。
 **功能規格**：
 - 使用 NextAuth.js + Google Provider，scope 包含 `openid email profile` 與
@@ -24,7 +24,7 @@
 - 登入後在 `users` 表建立/更新使用者資料：`id, google_id, email, name, avatar_url, created_at`。
 - 未登入使用者導向登入頁，無法存取 `/app/*` 路由。
 
-#### 2. 資料庫 Schema 與 Prisma 初始化 `[ ]`
+#### 2. 資料庫 Schema 與 Prisma 初始化 `[x]`
 **背景**：所有功能都依賴資料模型，需先定義好再開發功能。
 **功能規格**：
 - PostgreSQL + Prisma，啟用 `pgvector` extension。
