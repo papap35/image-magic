@@ -21,6 +21,17 @@ npx prisma migrate dev
 npm run dev
 ```
 
+### Google 登入設定
+
+1. 到 [Google Cloud Console](https://console.cloud.google.com/) 建立 OAuth 2.0
+   Client ID（類型：Web application）。
+2. Authorized redirect URI 填入 `http://localhost:3000/api/auth/callback/google`。
+3. 啟用 Google Drive API，並在 OAuth consent screen 加入
+   `https://www.googleapis.com/auth/drive.file` scope。
+4. 將 Client ID / Secret 填入 `.env` 的 `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`，
+   並設定 `NEXTAUTH_SECRET`（可用 `openssl rand -base64 32` 產生）。
+5. 登入後 `/app/*` 路由才可存取（見 `src/middleware.ts`）。
+
 ## 常用指令
 
 ```bash
