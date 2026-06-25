@@ -85,14 +85,62 @@
 #### 5. AI 圖片生成 Provider 抽象層 `[x]`
 **背景**：免費額度容易用完，需要可切換/擴充多個 provider，並記錄用量。
 **功能規格**：
-- `ImageProvider` interface（`services/imageProviders/types.ts`）：`generate(params): {url, raw}`。
-- 已實作 `OpenAiImageProvider`，透過 `services/imageProviders/index.ts` 的
-  registry（`getImageProvider(name)`）依名稱取得 provider，架構上可直接新增第二個 provider。
+- `ImageProvider` interface（`services/imageProviders/types.ts`）：
+  `generate(params, credentials): {url, raw}`，`credentials` 的 key 因 provider 而異。
+- `services/imageProviders/index.ts` 的 registry（`getImageProvider(name)`）依名稱取得
+  provider 實例，並 export `PROVIDER_DEFINITIONS`（`{id, label, authMode}`）供
+  API/前端取得可選清單，架構上可直接新增第三個 provider。
+- 所有出圖 provider 目前都是 `byok`（Bring Your Own Key）：使用者自己輸入 API
+  key，加密存在 `ProviderApiKey` 表（見下方說明），之後不用每次都重新輸入。
+  `authMode` 欄位仍保留在 `ProviderDefinition` type 上，供未來若有站方共用額度
+  的 provider 時擴充用，但目前兩個 provider 都是 `byok`。
+- 已實作兩個 provider：
+  - `openai`（`byok`）：直接呼叫 OpenAI Images API 出圖。
+  - `huggingface`（`byok`）：呼叫 Hugging Face Inference API
+    （`src/services/imageProviders/huggingface.ts`），預設模型
+    `stabilityai/stable-diffusion-xl-base-1.0`；HF 回傳的是原始圖片 bytes
+    （非網址），因此 base64 編碼成 `data:` URL 回傳，沿用既有
+    `uploadGeneratedImageToDrive` 的 `fetch(resultUrl)` 下載流程（Node 內建
+    fetch 原生支援 `data:` URL，無需額外改動）。
+- **「Claude 改寫 prompt」是與出圖 provider 完全獨立的選用功能**（Claude 沒有
+  圖片生成 API，僅負責文字改寫，不會出現在 provider 選單）：
+  - `src/services/promptEnhancement.ts`：`enhancePromptWithClaude(prompt,
+    anthropicApiKey)`，呼叫 Anthropic Messages API 把 prompt 改寫得更詳細生動；
+    任何失敗（網路、非 2xx、回應格式不對）都靜默回退用原始 prompt，不中斷整個
+    生成請求。
+  - `src/services/promptEnhancementAuth.ts`：
+    `resolvePromptEnhancementAuth(enabled, password)`，未啟用時直接回傳
+    `{ ok: true, anthropicApiKey: null }`；啟用時驗證「共用密碼」
+    （`PROMPT_ENHANCEMENT_PASSWORD`）通過後才回傳站方的 `ANTHROPIC_API_KEY`，
+    密碼錯誤回 401、站方未設定金鑰回 500。4 個測試 case。
+  - `src/lib/providerPassword.ts`：`verifySharedProviderPassword`，用
+    `crypto.timingSafeEqual` 做常數時間比對，避免時序攻擊；env
+    （`PROMPT_ENHANCEMENT_PASSWORD`）未設定或輸入缺失時一律回傳 `false`
+    （不拋例外）。4 個測試 case。
+- `src/services/providerCredentials.ts`：`resolveProviderCredentials(userId,
+  provider)`，純粹查使用者自己存的 BYOK key，統一回傳
+  `{ ok: true, credentials }` 或帶 HTTP status/錯誤訊息的失敗結果，由呼叫端的
+  API route 轉成對應的錯誤回應。
+- `ProviderApiKey` model（`userId, provider, encryptedKey`，`@@unique([userId,
+  provider])`）+ migration：使用者自備的 API key 經
+  `src/lib/tokenCrypto.ts` 的 `encryptToken`/`decryptToken`（與 Drive refresh
+  token 共用同一套 AES-256-GCM 加密、同一支 `DRIVE_TOKEN_ENCRYPTION_KEY`）加密
+  後存入，從不存明碼。
+- API：
+  - `GET /api/providers`：回傳 `PROVIDER_DEFINITIONS`（給前端畫下拉選單）。
+  - `GET /api/provider-keys`：回傳目前使用者已儲存 key 的 provider 名稱列表
+    （不回傳 key 本身）；`POST /api/provider-keys`（`provider, apiKey`）儲存/
+    更新；`DELETE /api/provider-keys/:provider` 刪除。
+  - `POST /api/generation-jobs`：body 為 `provider, promptFinal`，外加選填的
+    `enhancePrompt`（boolean）與 `password`（僅 `enhancePrompt` 為 true 時需要）。
+    依序呼叫 `resolveProviderCredentials` 取得出圖憑證、
+    `resolvePromptEnhancementAuth` 驗證改寫密碼，通過後才（視需要）呼叫
+    `enhancePromptWithClaude` 改寫 prompt，再建立並執行 job。
 - `GenerationJob` model 記錄：`userId, provider, promptFinal, params(json),
   status(pending/success/failed), resultUrl, error, createdAt`。
 - `UsageLog` model：按 `userId + provider + date`（UTC 當天）累計呼叫次數
   （`lib/generationJob.ts` 的 `toUsageDateKey` 純函式，已測試），供未來限流/計費使用。
-- API：`POST /api/generation-jobs`（建立並立即執行）、`GET /api/generation-jobs`（列表）。
+- `GET /api/generation-jobs`（列表）。
 - 失敗不拋例外，記錄在 `job.status = failed` + `job.error`，呼叫端依 HTTP 502 / job 內容判斷。
 
 #### 6. 產出圖片上傳 Google Drive `[x]`
@@ -121,14 +169,19 @@
 但使用者仍無法透過介面真正觸發生成，是整個系統可被使用的關鍵入口。
 **實作備註**：
 - `src/app/app/generate/page.tsx`：client component。
+- 下拉選單選擇出圖 `provider`（呼叫 `GET /api/providers` 取得選項）；選定後若
+  尚未存過該 provider 的 API key，顯示輸入框讓使用者輸入並呼叫
+  `POST /api/provider-keys` 儲存（之後沿用，不用每次重新輸入）。
+- 獨立的「出圖前先用 Claude 改寫 prompt」checkbox，與上面的 provider 選擇完全
+  無關；勾選後才顯示「共用密碼」輸入框（對應 `PROMPT_ENHANCEMENT_PASSWORD`）。
 - 下拉選單選擇要套用的 `StylePreset`（選填，選了會呼叫
   `GET /api/style-presets/:id/fields` 載入該模板的固定欄位並顯示）。
 - 額外提供「一次性欄位」輸入區（key/value），僅存在前端 state，不呼叫任何
   API（符合 SPEC 4 號項目「一次性欄位不需要後端持久化」的範疇），與模板欄位
   一起傳入既有的 `lib/prompt.ts` 的 `buildFinalPrompt(basePrompt, fields)`
   即時組成最終 prompt 預覽。
-- 送出呼叫 `POST /api/generation-jobs`（`provider` 固定帶 `"openai"`，目前
-  registry 中唯一已實作的 provider），並重新載入下方的生成紀錄列表。
+- 送出呼叫 `POST /api/generation-jobs`（帶上選定的 `provider`、
+  `enhancePrompt`、需要時的 `password`），並重新載入下方的生成紀錄列表。
 - 生成紀錄列表呼叫 `GET /api/generation-jobs`，依 `status` 顯示結果圖片
   （`resultUrl`）或錯誤訊息（`error`）。
 - `src/app/app/page.tsx` 補上導向「產生圖片／圖庫／風格指令」三個頁面的連結。

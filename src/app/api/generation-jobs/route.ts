@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { getCurrentUserId } from "@/lib/session";
 import { createAndRunGenerationJob, listGenerationJobs } from "@/services/generationJobs";
+import { resolveProviderCredentials } from "@/services/providerCredentials";
+import { resolvePromptEnhancementAuth } from "@/services/promptEnhancementAuth";
+import { enhancePromptWithClaude } from "@/services/promptEnhancement";
 
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -38,7 +41,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const job = await createAndRunGenerationJob(userId, body);
+  const credentials = await resolveProviderCredentials(userId, body.provider);
+  if (!credentials.ok) {
+    return NextResponse.json(
+      { error: { code: credentials.code, message: credentials.message } },
+      { status: credentials.status },
+    );
+  }
+
+  const enhancementAuth = resolvePromptEnhancementAuth(Boolean(body.enhancePrompt), body.password);
+  if (!enhancementAuth.ok) {
+    return NextResponse.json(
+      { error: { code: enhancementAuth.code, message: enhancementAuth.message } },
+      { status: enhancementAuth.status },
+    );
+  }
+
+  const promptFinal = enhancementAuth.anthropicApiKey
+    ? await enhancePromptWithClaude(body.promptFinal, enhancementAuth.anthropicApiKey)
+    : body.promptFinal;
+
+  const job = await createAndRunGenerationJob(userId, { ...body, promptFinal }, credentials.credentials);
   const status = job.status === "failed" ? 502 : 201;
   return NextResponse.json({ job }, { status });
 }

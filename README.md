@@ -69,6 +69,7 @@ GitHub Actions（`.github/workflows/ci.yml`）兩個 job：
 Environment Variables，設定在 `Production` 環境）：
 `DATABASE_URL`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`NEXTAUTH_URL`
 （正式網域）、`NEXTAUTH_SECRET`、`AI_IMAGE_PROVIDER_API_KEY`、
+`ANTHROPIC_API_KEY`、`PROMPT_ENHANCEMENT_PASSWORD`、
 `DRIVE_TOKEN_ENCRYPTION_KEY`，內容與 `.env.example` 對應。
 
 設定好以上 secrets 與環境變數後，PR 合併進 `main` 即會自動跑完整 CI，

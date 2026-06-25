@@ -11,6 +11,8 @@ export interface CreateGenerationJobInput {
   params?: Record<string, unknown>;
 }
 
+export type ProviderCredentials = Record<string, string>;
+
 async function incrementUsage(userId: string, provider: string) {
   const date = toUsageDateKey(new Date());
   await prisma.usageLog.upsert({
@@ -25,7 +27,11 @@ async function incrementUsage(userId: string, provider: string) {
  * (success/failure), and record per-day usage. Failure does not throw —
  * it is recorded on the job row so the caller can inspect job.status.
  */
-export async function createAndRunGenerationJob(userId: string, input: CreateGenerationJobInput) {
+export async function createAndRunGenerationJob(
+  userId: string,
+  input: CreateGenerationJobInput,
+  credentials: ProviderCredentials,
+) {
   const job = await prisma.generationJob.create({
     data: {
       userId,
@@ -45,7 +51,7 @@ export async function createAndRunGenerationJob(userId: string, input: CreateGen
   }
 
   try {
-    const result = await provider.generate({ prompt: input.promptFinal });
+    const result = await provider.generate({ prompt: input.promptFinal }, credentials);
     await incrementUsage(userId, input.provider);
 
     let image;

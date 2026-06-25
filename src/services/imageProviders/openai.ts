@@ -3,13 +3,16 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./
 export class OpenAiImageProvider implements ImageProvider {
   readonly name = "openai";
 
-  constructor(private readonly apiKey: string = process.env.AI_IMAGE_PROVIDER_API_KEY ?? "") {}
+  async generate(params: GenerateImageParams, credentials: Record<string, string>): Promise<GenerateImageResult> {
+    const apiKey = credentials.apiKey;
+    if (!apiKey) {
+      throw new Error("Missing OpenAI API key");
+    }
 
-  async generate(params: GenerateImageParams): Promise<GenerateImageResult> {
     const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
