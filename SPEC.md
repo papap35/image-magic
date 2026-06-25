@@ -106,11 +106,17 @@
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
-#### 7. 標題 / 描述編輯 `[ ]`
+#### 7. 標題 / 描述編輯 `[x]`
 **背景**：使用者要能幫圖片補充標題與描述。
-**功能規格**：
-- `images.title`, `images.description` 欄位，預設為空，使用者可手動編輯。
-- API：`PATCH /api/images/:id`。
+**實作備註**：
+- `lib/image.ts`：`validateImageUpdateInput`（長度驗證，title ≤200 字、
+  description ≤2000 字，未提供的欄位不驗證）、`normalizeClearableText`
+  （空白字串正規化為 `null`，視為清空欄位，而非驗證錯誤），共 8 個測試 case。
+- `services/images.ts`：`listImages(userId)`、
+  `updateImage(userId, id, input)`（先以 `findFirst({ id, userId })` 確認
+  所有權，再更新；不屬於自己的圖片回傳 `null`）。
+- API：`GET /api/images`（列表，僅回傳自己的圖片）、
+  `PATCH /api/images/:id`（更新 title/description，空字串清空欄位）。
 
 #### 8. 標籤系統（使用者自訂） `[ ]`
 **背景**：方便分類與篩選圖片。
