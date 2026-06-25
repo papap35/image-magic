@@ -145,7 +145,16 @@
   `DELETE /api/images/:id/tags/:tagId`（移除圖片標籤）。
 - UI（輸入自動建議既有標籤）：拆成 8b 延伸項目，待前端開發階段一併處理。
 
-#### 8b. 標籤系統 UI（自動建議、新增/移除互動） `[ ]`
+#### 8b. 標籤系統 UI（自動建議、新增/移除互動） `[x]`
+**實作備註**：
+- `src/app/app/images/page.tsx`：圖庫列表頁，掛載時並行呼叫 `GET /api/images`
+  與 `GET /api/tags`（後者用於跨圖片的標籤自動建議來源）。
+- 每張圖片渲染一個 `ImageTagEditor` 子元件：掛載時呼叫
+  `GET /api/images/:id/tags` 載入該圖片已有標籤；輸入框用 `<datalist>`
+  根據使用者輸入字串即時過濾 `GET /api/tags` 回傳的全部標籤（排除已加在
+  該圖片上的）作為自動建議；送出呼叫 `POST /api/images/:id/tags`
+  （標籤不存在會自動建立，沿用既有 service 行為）；每個已加標籤旁的
+  「移除」按鈕呼叫 `DELETE /api/images/:id/tags/:tagId`。
 
 #### 9. AI 辨識內容（自動 Caption + Tag 建議） `[x]` — API
 **背景**：使用者不想每張圖都手動寫描述/標籤。
