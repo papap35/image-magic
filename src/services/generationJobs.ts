@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { toUsageDateKey } from "@/lib/generationJob";
 import { getImageProvider } from "@/services/imageProviders";
 import { uploadGeneratedImageToDrive } from "@/services/images";
+import { runImageRecognition } from "@/services/imageRecognition";
 
 export interface CreateGenerationJobInput {
   provider: string;
@@ -47,8 +48,9 @@ export async function createAndRunGenerationJob(userId: string, input: CreateGen
     const result = await provider.generate({ prompt: input.promptFinal });
     await incrementUsage(userId, input.provider);
 
+    let image;
     try {
-      await uploadGeneratedImageToDrive(userId, job.id, result.url);
+      image = await uploadGeneratedImageToDrive(userId, job.id, result.url);
     } catch (driveErr) {
       const message = driveErr instanceof Error ? driveErr.message : "Unknown error";
       return prisma.generationJob.update({
@@ -56,6 +58,9 @@ export async function createAndRunGenerationJob(userId: string, input: CreateGen
         data: { status: "failed", resultUrl: result.url, error: `Drive upload failed: ${message}` },
       });
     }
+
+    // Best-effort AI captioning/tag suggestions; never affects job status.
+    await runImageRecognition(image.id);
 
     return prisma.generationJob.update({
       where: { id: job.id },

@@ -133,13 +133,25 @@
 
 #### 8b. 標籤系統 UI（自動建議、新增/移除互動） `[ ]`
 
-#### 9. AI 辨識內容（自動 Caption + Tag 建議） `[ ]`
+#### 9. AI 辨識內容（自動 Caption + Tag 建議） `[x]` — API
 **背景**：使用者不想每張圖都手動寫描述/標籤。
-**功能規格**：
-- 圖片上傳成功後，非同步呼叫 Vision 模型產生 `ai_caption`（一段描述）與
-  `ai_tags`（建議標籤陣列），存入 `images.ai_caption`, 並寫入建議標籤
-  （使用者可一鍵採用或忽略）。
-- 失敗不影響主流程（屬於增強功能），記錄錯誤即可。
+**實作備註**：
+- `lib/visionResult.ts`：`parseVisionResponseText` 純函式，從 Vision 模型的
+  文字回應中解析出 `{ caption, tags }`（容忍 markdown code fence 包裹、
+  過濾非字串 tag），6 個測試 case。
+- `services/visionProviders/{types,openai,index}.ts`：`VisionProvider`
+  介面 + `OpenAiVisionProvider`（呼叫 OpenAI Chat Completions 的 vision
+  輸入），registry 架構與 `imageProviders` 一致，可擴充其他 provider。
+- `Image` model 新增 `aiTagSuggestions`（Json，建議標籤陣列）、
+  `aiRecognitionError`（記錄辨識失敗原因）欄位 + migration。
+- `services/imageRecognition.ts`：`runImageRecognition(imageId)`，呼叫
+  Vision provider 寫入 `aiCaption`/`aiTagSuggestions`；失敗只記錄
+  `aiRecognitionError`，**不拋例外**，不影響呼叫端。
+- 串接在 `generationJobs.ts`：Drive 上傳成功建立 `Image` 後執行，
+  失敗不影響 `GenerationJob` 的成功狀態（與 Drive 上傳失敗會讓 job 失敗的
+  行為不同，符合「失敗不影響主流程」的規格）。
+- API：`POST /api/images/:id/ai-tags/accept`（把建議標籤逐一轉成真正標籤，
+  並清空建議列表）、`POST /api/images/:id/ai-tags/dismiss`（直接清空建議列表）。
 
 ---
 
