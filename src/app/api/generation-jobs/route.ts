@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { getCurrentUserId } from "@/lib/session";
 import { createAndRunGenerationJob, listGenerationJobs } from "@/services/generationJobs";
+import { resolveProviderCredentials } from "@/services/providerCredentials";
 
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -38,7 +39,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const job = await createAndRunGenerationJob(userId, body);
+  const credentials = await resolveProviderCredentials(userId, body.provider, { password: body.password });
+  if (!credentials.ok) {
+    return NextResponse.json(
+      { error: { code: credentials.code, message: credentials.message } },
+      { status: credentials.status },
+    );
+  }
+
+  const job = await createAndRunGenerationJob(userId, body, credentials.credentials);
   const status = job.status === "failed" ? 502 : 201;
   return NextResponse.json({ job }, { status });
 }

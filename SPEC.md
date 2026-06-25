@@ -85,14 +85,49 @@
 #### 5. AI 圖片生成 Provider 抽象層 `[x]`
 **背景**：免費額度容易用完，需要可切換/擴充多個 provider，並記錄用量。
 **功能規格**：
-- `ImageProvider` interface（`services/imageProviders/types.ts`）：`generate(params): {url, raw}`。
-- 已實作 `OpenAiImageProvider`，透過 `services/imageProviders/index.ts` 的
-  registry（`getImageProvider(name)`）依名稱取得 provider，架構上可直接新增第二個 provider。
+- `ImageProvider` interface（`services/imageProviders/types.ts`）：
+  `generate(params, credentials): {url, raw}`，`credentials` 的 key 因 provider 而異。
+- `services/imageProviders/index.ts` 的 registry（`getImageProvider(name)`）依名稱取得
+  provider 實例，並 export `PROVIDER_DEFINITIONS`（`{id, label, authMode}`）供
+  API/前端取得可選清單，架構上可直接新增第三個 provider。
+- 兩種 provider 認證模式（`authMode`）：
+  - `shared-password`：使用站方提供、寫在環境變數的 key，使用者輸入「共用密碼」
+    （`DEFAULT_PROVIDER_PASSWORD`）驗證通過後才能用，避免額度被陌生人濫用。
+  - `byok`（Bring Your Own Key）：使用者自己輸入 API key，加密存在
+    `ProviderApiKey` 表（見下方說明），之後不用每次都重新輸入。
+- 已實作兩個 provider：
+  - `openai`（`byok`）：直接呼叫 OpenAI Images API 出圖。
+  - `claude`（`shared-password`）：Claude 沒有圖片生成 API，此 provider 先用
+    Claude（Anthropic Messages API，金鑰來自 `ANTHROPIC_API_KEY`）把使用者的
+    prompt 改寫得更詳細生動，再把改寫後的 prompt 丟給 OpenAI Images API
+    （金鑰來自 `AI_IMAGE_PROVIDER_API_KEY`）實際出圖；改寫失敗則回退用原始
+    prompt 直接出圖，不中斷整個請求。
+- `src/lib/providerPassword.ts`：`verifySharedProviderPassword`，用
+  `crypto.timingSafeEqual` 做常數時間比對，避免時序攻擊；env 未設定或輸入
+  缺失時一律回傳 `false`（不拋例外）。4 個測試 case。
+- `src/services/providerCredentials.ts`：`resolveProviderCredentials(userId,
+  provider, { password })`，依 provider 的 `authMode` 決定憑證怎麼來（驗證共用
+  密碼後組站方金鑰／查使用者自己存的 key），統一回傳
+  `{ ok: true, credentials }` 或帶 HTTP status/錯誤訊息的失敗結果，由呼叫端的
+  API route 轉成對應的錯誤回應。
+- `ProviderApiKey` model（`userId, provider, encryptedKey`，`@@unique([userId,
+  provider])`）+ migration：使用者自備的 API key 經
+  `src/lib/tokenCrypto.ts` 的 `encryptToken`/`decryptToken`（與 Drive refresh
+  token 共用同一套 AES-256-GCM 加密、同一支 `DRIVE_TOKEN_ENCRYPTION_KEY`）加密
+  後存入，從不存明碼。
+- API：
+  - `GET /api/providers`：回傳 `PROVIDER_DEFINITIONS`（給前端畫下拉選單）。
+  - `GET /api/provider-keys`：回傳目前使用者已儲存 key 的 provider 名稱列表
+    （不回傳 key 本身）；`POST /api/provider-keys`（`provider, apiKey`）儲存/
+    更新；`DELETE /api/provider-keys/:provider` 刪除。
+  - `POST /api/generation-jobs`：body 多了選填的 `password`（僅
+    `shared-password` provider 需要），內部呼叫 `resolveProviderCredentials`
+    取得憑證後才建立並執行 job。
 - `GenerationJob` model 記錄：`userId, provider, promptFinal, params(json),
   status(pending/success/failed), resultUrl, error, createdAt`。
 - `UsageLog` model：按 `userId + provider + date`（UTC 當天）累計呼叫次數
   （`lib/generationJob.ts` 的 `toUsageDateKey` 純函式，已測試），供未來限流/計費使用。
-- API：`POST /api/generation-jobs`（建立並立即執行）、`GET /api/generation-jobs`（列表）。
+- `GET /api/generation-jobs`（列表）。
 - 失敗不拋例外，記錄在 `job.status = failed` + `job.error`，呼叫端依 HTTP 502 / job 內容判斷。
 
 #### 6. 產出圖片上傳 Google Drive `[x]`

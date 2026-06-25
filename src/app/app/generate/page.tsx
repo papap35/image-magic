@@ -25,7 +25,11 @@ interface GenerationJob {
   createdAt: string;
 }
 
-const PROVIDER = "openai";
+interface ProviderOption {
+  id: string;
+  label: string;
+  authMode: "shared-password" | "byok";
+}
 
 export default function GeneratePage() {
   const [presets, setPresets] = useState<StylePreset[]>([]);
@@ -35,6 +39,13 @@ export default function GeneratePage() {
   const [extraFields, setExtraFields] = useState<PromptFieldInput[]>([]);
   const [extraKey, setExtraKey] = useState("");
   const [extraValue, setExtraValue] = useState("");
+
+  const [providers, setProviders] = useState<ProviderOption[]>([]);
+  const [providerId, setProviderId] = useState("");
+  const [savedProviders, setSavedProviders] = useState<string[]>([]);
+  const [password, setPassword] = useState("");
+  const [byokKeyInput, setByokKeyInput] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
 
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -56,9 +67,30 @@ export default function GeneratePage() {
     }
   }
 
+  async function loadProviders() {
+    const res = await fetch("/api/providers");
+    const data = await res.json();
+    if (res.ok) {
+      setProviders(data.providers);
+      if (data.providers.length > 0) {
+        setProviderId((current) => current || data.providers[0].id);
+      }
+    }
+  }
+
+  async function loadSavedProviders() {
+    const res = await fetch("/api/provider-keys");
+    const data = await res.json();
+    if (res.ok) {
+      setSavedProviders(data.savedProviders);
+    }
+  }
+
   useEffect(() => {
     loadPresets();
     loadJobs();
+    loadProviders();
+    loadSavedProviders();
   }, []);
 
   useEffect(() => {
@@ -88,10 +120,46 @@ export default function GeneratePage() {
     setExtraFields((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const selectedProvider = providers.find((p) => p.id === providerId);
+  const hasSavedKey = savedProviders.includes(providerId);
+
+  async function handleSaveKey() {
+    if (!byokKeyInput.trim()) {
+      return;
+    }
+    setSavingKey(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/provider-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: providerId, apiKey: byokKeyInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error?.message ?? "儲存 API Key 失敗");
+      }
+      setByokKeyInput("");
+      await loadSavedProviders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "儲存 API Key 失敗");
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!finalPrompt.trim()) {
       setError("最終 prompt 不能是空的");
+      return;
+    }
+    if (selectedProvider?.authMode === "shared-password" && !password.trim()) {
+      setError("此 provider 需要輸入共用密碼");
+      return;
+    }
+    if (selectedProvider?.authMode === "byok" && !hasSavedKey) {
+      setError("此 provider 需要先儲存你自己的 API Key");
       return;
     }
     setSubmitting(true);
@@ -100,7 +168,7 @@ export default function GeneratePage() {
       const res = await fetch("/api/generation-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: PROVIDER, promptFinal: finalPrompt }),
+        body: JSON.stringify({ provider: providerId, promptFinal: finalPrompt, password: password || undefined }),
       });
       const data = await res.json();
       if (!res.ok && res.status !== 502) {
@@ -123,6 +191,52 @@ export default function GeneratePage() {
       {error && <p role="alert">{error}</p>}
 
       <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="provider-select">AI Provider</label>
+          <select id="provider-select" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+            {providers.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.label}
+              </option>
+            ))}
+          </select>
+
+          {selectedProvider?.authMode === "shared-password" && (
+            <div>
+              <label htmlFor="provider-password">共用密碼</label>
+              <input
+                id="provider-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="輸入共用密碼才能使用此 provider"
+              />
+            </div>
+          )}
+
+          {selectedProvider?.authMode === "byok" && (
+            <div>
+              {hasSavedKey ? (
+                <p>已儲存此 provider 的 API Key。</p>
+              ) : (
+                <>
+                  <label htmlFor="provider-api-key">你的 {selectedProvider.label} API Key</label>
+                  <input
+                    id="provider-api-key"
+                    type="password"
+                    value={byokKeyInput}
+                    onChange={(e) => setByokKeyInput(e.target.value)}
+                    placeholder="輸入你自己的 API Key"
+                  />
+                  <button type="button" onClick={handleSaveKey} disabled={savingKey}>
+                    {savingKey ? "儲存中..." : "儲存 API Key"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         <div>
           <label htmlFor="preset-select">套用風格指令（選填）</label>
           <select id="preset-select" value={presetId} onChange={(e) => setPresetId(e.target.value)}>

@@ -25,6 +25,20 @@ model User {
   images          Image[]
   tags            Tag[]
   usageLogs       UsageLog[]
+  providerApiKeys ProviderApiKey[]
+}
+
+model ProviderApiKey {
+  id            String   @id @default(cuid())
+  userId        String
+  provider      String
+  encryptedKey  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
 }
 
 model StylePreset {
