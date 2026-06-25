@@ -14,6 +14,7 @@ model User {
   name          String?
   avatarUrl     String?
   driveFolderId String?
+  driveRefreshToken String?
   createdAt     DateTime        @default(now())
 
   stylePresets    StylePreset[]
