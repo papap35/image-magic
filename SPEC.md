@@ -68,14 +68,18 @@
 - 表單可動態新增/刪除 key:value 列，支援拖曳排序（呼叫 `order` 欄位更新）。
 - 切換「儲存為模板」（呼叫上述 API）或「僅本次使用」（不呼叫 API，前端暫存）。
 
-#### 5. AI 圖片生成 Provider 抽象層 `[ ]`
+#### 5. AI 圖片生成 Provider 抽象層 `[x]`
 **背景**：免費額度容易用完，需要可切換/擴充多個 provider，並記錄用量。
 **功能規格**：
-- 定義 `ImageProvider` interface（`generate(prompt, params): {url, raw}`）。
-- 先實作一個 provider（例如 OpenAI Images API），架構上預留第二個 provider 的擴充點。
-- `generation_jobs` 表記錄：`id, user_id, provider, prompt_final, params(json),
-  status(pending/success/failed), result_url, error, created_at`。
-- `usage_logs` 表：按 `user_id + provider + date` 累計呼叫次數，供未來限流/計費使用。
+- `ImageProvider` interface（`services/imageProviders/types.ts`）：`generate(params): {url, raw}`。
+- 已實作 `OpenAiImageProvider`，透過 `services/imageProviders/index.ts` 的
+  registry（`getImageProvider(name)`）依名稱取得 provider，架構上可直接新增第二個 provider。
+- `GenerationJob` model 記錄：`userId, provider, promptFinal, params(json),
+  status(pending/success/failed), resultUrl, error, createdAt`。
+- `UsageLog` model：按 `userId + provider + date`（UTC 當天）累計呼叫次數
+  （`lib/generationJob.ts` 的 `toUsageDateKey` 純函式，已測試），供未來限流/計費使用。
+- API：`POST /api/generation-jobs`（建立並立即執行）、`GET /api/generation-jobs`（列表）。
+- 失敗不拋例外，記錄在 `job.status = failed` + `job.error`，呼叫端依 HTTP 502 / job 內容判斷。
 
 #### 6. 產出圖片上傳 Google Drive `[ ]`
 **背景**：圖片要存在使用者自己的 Drive，不佔用我方儲存成本，所有權歸屬使用者。
