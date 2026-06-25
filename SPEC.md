@@ -157,11 +157,19 @@
 
 ### P3 — 搜尋功能
 
-#### 10. 關鍵字搜尋 `[ ]`
+#### 10. 關鍵字搜尋 `[x]`
 **背景**：使用者要能用文字快速找到圖片。
-**功能規格**：
-- PostgreSQL 全文檢索（`tsvector`），索引 `title + description + ai_caption + tags`。
-- API：`GET /api/images/search?q=關鍵字`，依使用者範圍過濾。
+**實作備註**：
+- `lib/search.ts`：`validateSearchQuery`（trim、非空、長度上限 200 字），5 個測試 case。
+- `services/imageSearch.ts`：`searchImages(userId, query)` 用 `prisma.$queryRaw`
+  （`Prisma.sql` 參數化避免注入）執行 PostgreSQL 全文檢索：先用 CTE 把每張圖
+  的標籤名稱聚合成一段文字（`string_agg`），再對
+  `title + description + aiCaption + 標籤文字` 組成的 `to_tsvector('simple', ...)`
+  用 `plainto_tsquery('simple', query)` 比對；範圍限定在 `userId`。
+- 沒有用 stored generated column／trigger 維護 tsvector，因為 tags 在另一張表，
+  即時計算雖然查詢成本較高，但避免了 tags 增刪時還要同步更新 Image 上的
+  tsvector 欄位的複雜度；待資料量大時可評估改為 materialized view 或 trigger。
+- API：`GET /api/images/search?q=關鍵字`，僅回傳該使用者自己的圖片。
 
 #### 11. AI 語意搜尋 `[ ]`
 **背景**：關鍵字搜尋無法理解語意相近但用詞不同的查詢。
