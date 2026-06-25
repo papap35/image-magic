@@ -81,14 +81,26 @@
 - API：`POST /api/generation-jobs`（建立並立即執行）、`GET /api/generation-jobs`（列表）。
 - 失敗不拋例外，記錄在 `job.status = failed` + `job.error`，呼叫端依 HTTP 502 / job 內容判斷。
 
-#### 6. 產出圖片上傳 Google Drive `[ ]`
+#### 6. 產出圖片上傳 Google Drive `[x]`
 **背景**：圖片要存在使用者自己的 Drive，不佔用我方儲存成本，所有權歸屬使用者。
-**功能規格**：
-- 生成成功後，後端用使用者的 Drive OAuth token，將圖片上傳到
-  使用者 Drive 下的專屬資料夾（例如 `/ImageMagic/`，若不存在則建立）。
-- `images` 表記錄：`id, user_id, job_id, drive_file_id, drive_view_url,
-  thumbnail_url, width, height, created_at`。
-- Token 過期時走 refresh token 流程；失敗時 job 狀態標記失敗並可重試。
+**功能規格 / 實作備註**：
+- 登入時若 Google 回傳 `refresh_token`（僅首次同意授權時會給），存入
+  `User.driveRefreshToken`（`src/services/auth.ts` 的 `signIn` callback）。
+- `src/services/googleDrive.ts`：`refreshAccessToken`（用 refresh token 換 access
+  token）、`ensureAppFolder`（找不到 `ImageMagic` 資料夾就建立，找得到則重用，
+  並把 id 存回 `User.driveFolderId` 避免重複建立）、`uploadImageToDrive`
+  （multipart upload 到 Drive v3 API）。
+- `src/lib/driveUpload.ts`：`buildMultipartUploadBody`、`buildGeneratedImageFileName`
+  純函式（組 multipart body、產生檔名），已測試（4 個 case）。
+- `src/services/images.ts`：`uploadGeneratedImageToDrive(userId, jobId, resultUrl)`
+  下載 provider 回的暫時圖片網址、上傳到使用者 Drive，建立 `Image` row
+  （`driveFileId`, `driveViewUrl`, `jobId`）。
+- 串接在 `services/generationJobs.ts`：圖片生成成功後才嘗試上傳；Drive 上傳失敗時
+  整個 job 標記為 `failed`（保留 `resultUrl` 方便除錯），錯誤訊息加上
+  `Drive upload failed:` 前綴方便辨識失敗階段。
+- `User` 未曾完成過 Google 授權（沒有 `driveRefreshToken`）時直接拋錯，視為
+  Drive 上傳失敗，由呼叫端依 job 狀態判斷。
+- Thumbnail / width / height 欄位先保留為空，待 P2 圖庫功能再補（非本次範疇）。
 
 ---
 

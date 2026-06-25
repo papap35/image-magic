@@ -21,15 +21,18 @@ export const authOptions: NextAuthOptions = {
   ],
   session: { strategy: "jwt" },
   callbacks: {
-    async signIn({ profile }) {
+    async signIn({ profile, account }) {
       if (!profile?.email || !(profile as Profile & { sub?: string }).sub) {
         return false;
       }
       const data = buildUserUpsertData(profile as { sub: string; email: string; name?: string | null; picture?: string | null });
+      // Google only returns a refresh_token on the first consent grant, so only
+      // overwrite the stored one when we actually receive a new one.
+      const refreshToken = account?.refresh_token;
       await prisma.user.upsert({
         where: { googleId: data.googleId },
-        create: data,
-        update: data,
+        create: { ...data, driveRefreshToken: refreshToken ?? null },
+        update: refreshToken ? { ...data, driveRefreshToken: refreshToken } : data,
       });
       return true;
     },
