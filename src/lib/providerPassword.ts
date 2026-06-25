@@ -1,13 +1,14 @@
 import { timingSafeEqual } from "crypto";
 
 /**
- * Constant-time comparison against the shared password gating the site's
- * default ("claude") provider, configured via DEFAULT_PROVIDER_PASSWORD.
- * Returns false (never throws) when the env var is unset or the input is
- * missing/wrong length, so callers can treat any falsy result as "denied".
+ * Constant-time comparison against the shared password gating Claude-based
+ * prompt enhancement (which uses the site's own ANTHROPIC_API_KEY),
+ * configured via PROMPT_ENHANCEMENT_PASSWORD. Returns false (never throws)
+ * when the env var is unset or the input is missing/wrong length, so
+ * callers can treat any falsy result as "denied".
  */
 export function verifySharedProviderPassword(input: string | undefined | null): boolean {
-  const expected = process.env.DEFAULT_PROVIDER_PASSWORD;
+  const expected = process.env.PROMPT_ENHANCEMENT_PASSWORD;
   if (!expected || !input) {
     return false;
   }

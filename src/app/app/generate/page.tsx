@@ -43,9 +43,11 @@ export default function GeneratePage() {
   const [providers, setProviders] = useState<ProviderOption[]>([]);
   const [providerId, setProviderId] = useState("");
   const [savedProviders, setSavedProviders] = useState<string[]>([]);
-  const [password, setPassword] = useState("");
   const [byokKeyInput, setByokKeyInput] = useState("");
   const [savingKey, setSavingKey] = useState(false);
+
+  const [enhancePrompt, setEnhancePrompt] = useState(false);
+  const [enhancePassword, setEnhancePassword] = useState("");
 
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -154,12 +156,12 @@ export default function GeneratePage() {
       setError("最終 prompt 不能是空的");
       return;
     }
-    if (selectedProvider?.authMode === "shared-password" && !password.trim()) {
-      setError("此 provider 需要輸入共用密碼");
+    if (!hasSavedKey) {
+      setError("此 provider 需要先儲存你自己的 API Key");
       return;
     }
-    if (selectedProvider?.authMode === "byok" && !hasSavedKey) {
-      setError("此 provider 需要先儲存你自己的 API Key");
+    if (enhancePrompt && !enhancePassword.trim()) {
+      setError("使用 Claude 改寫 prompt 需要輸入共用密碼");
       return;
     }
     setSubmitting(true);
@@ -168,7 +170,12 @@ export default function GeneratePage() {
       const res = await fetch("/api/generation-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: providerId, promptFinal: finalPrompt, password: password || undefined }),
+        body: JSON.stringify({
+          provider: providerId,
+          promptFinal: finalPrompt,
+          enhancePrompt,
+          password: enhancePrompt ? enhancePassword : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok && res.status !== 502) {
@@ -201,20 +208,7 @@ export default function GeneratePage() {
             ))}
           </select>
 
-          {selectedProvider?.authMode === "shared-password" && (
-            <div>
-              <label htmlFor="provider-password">共用密碼</label>
-              <input
-                id="provider-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="輸入共用密碼才能使用此 provider"
-              />
-            </div>
-          )}
-
-          {selectedProvider?.authMode === "byok" && (
+          {selectedProvider && (
             <div>
               {hasSavedKey ? (
                 <p>已儲存此 provider 的 API Key。</p>
@@ -233,6 +227,30 @@ export default function GeneratePage() {
                   </button>
                 </>
               )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="enhance-prompt-checkbox">
+            <input
+              id="enhance-prompt-checkbox"
+              type="checkbox"
+              checked={enhancePrompt}
+              onChange={(e) => setEnhancePrompt(e.target.checked)}
+            />
+            出圖前先用 Claude 改寫 prompt（讓描述更生動詳細；Claude 本身不出圖，只負責改寫文字）
+          </label>
+          {enhancePrompt && (
+            <div>
+              <label htmlFor="enhance-password">共用密碼</label>
+              <input
+                id="enhance-password"
+                type="password"
+                value={enhancePassword}
+                onChange={(e) => setEnhancePassword(e.target.value)}
+                placeholder="輸入共用密碼才能使用 Claude 改寫"
+              />
             </div>
           )}
         </div>
