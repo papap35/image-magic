@@ -20,6 +20,7 @@ model User {
   generationJobs  GenerationJob[]
   images          Image[]
   tags            Tag[]
+  usageLogs       UsageLog[]
 }
 
 model StylePreset {
@@ -62,6 +63,18 @@ model GenerationJob {
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   images Image[]
+}
+
+model UsageLog {
+  id       String   @id @default(cuid())
+  userId   String
+  provider String
+  date     DateTime
+  count    Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, date])
 }
 
 model Image {
