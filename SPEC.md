@@ -247,7 +247,27 @@
 - 測試覆蓋率：API route 與 utils 純函式單元測試、關鍵流程 e2e 測試。
 - 錯誤處理：Drive 上傳失敗重試機制、AI provider 逾時/額度錯誤的使用者提示。
 - 效能：圖片列表分頁、縮圖快取策略待評估（是否需要 CDN）。
-- 安全：Drive OAuth token 加密儲存、API rate limiting。
+- 安全：Drive OAuth token 加密儲存 `[x]`、API rate limiting。
+
+### Drive OAuth refresh token 加密儲存 `[x]`
+**背景**：`User.driveRefreshToken` 原本以明碼存在 DB，一旦資料庫洩漏即可直接
+冒用使用者的 Google Drive 存取權限，需要加密儲存。
+**實作備註**：
+- `src/lib/tokenCrypto.ts`：`encryptToken`/`decryptToken`，用 Node 內建
+  `crypto` 的 AES-256-GCM，金鑰來自環境變數 `DRIVE_TOKEN_ENCRYPTION_KEY`
+  （32 bytes、base64 編碼）。儲存格式為 `iv:authTag:ciphertext`（皆 base64），
+  存成單一字串欄位。每次加密用隨機 iv，相同明碼每次產生不同 ciphertext；
+  auth tag 驗證失敗（如被竄改）會拋例外。6 個測試 case（正常加解密、隨機性、
+  缺金鑰、金鑰長度錯誤、格式錯誤、ciphertext 被竄改）。
+- `src/services/auth.ts` 的 `signIn` callback：取得 Google 回傳的
+  refresh token 後先 `encryptToken` 再寫入 `User.driveRefreshToken`。
+- `src/services/images.ts` 的 `uploadGeneratedImageToDrive`：讀出
+  `user.driveRefreshToken` 後先 `decryptToken` 再用於換取 access token。
+- `.env.example` 新增 `DRIVE_TOKEN_ENCRYPTION_KEY`（用
+  `openssl rand -base64 32` 產生）。
+- 未涵蓋既有明碼資料的遷移：此專案尚未有正式上線資料，故沒有為已存在的
+  明碼 token 寫資料轉換 migration；若日後資料庫已有明碼 token，需額外寫一次性
+  腳本將其加密後覆寫。
 
 ## 優先開發路徑建議
 

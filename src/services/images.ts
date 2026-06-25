@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { buildGeneratedImageFileName } from "@/lib/driveUpload";
 import { normalizeClearableText } from "@/lib/image";
+import { decryptToken } from "@/lib/tokenCrypto";
 import { ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
 import { addTagToImage } from "@/services/tags";
 
@@ -16,7 +17,7 @@ export async function uploadGeneratedImageToDrive(userId: string, jobId: string,
     throw new Error("User has not granted Drive access (missing refresh token)");
   }
 
-  const accessToken = await refreshAccessToken(user.driveRefreshToken);
+  const accessToken = await refreshAccessToken(decryptToken(user.driveRefreshToken));
   const folderId = await ensureAppFolder(accessToken, user.driveFolderId);
   if (folderId !== user.driveFolderId) {
     await prisma.user.update({ where: { id: userId }, data: { driveFolderId: folderId } });

@@ -2,6 +2,7 @@ import type { NextAuthOptions, Profile } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { buildUserUpsertData } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { encryptToken } from "@/lib/tokenCrypto";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 
@@ -29,10 +30,11 @@ export const authOptions: NextAuthOptions = {
       // Google only returns a refresh_token on the first consent grant, so only
       // overwrite the stored one when we actually receive a new one.
       const refreshToken = account?.refresh_token;
+      const encryptedRefreshToken = refreshToken ? encryptToken(refreshToken) : null;
       await prisma.user.upsert({
         where: { googleId: data.googleId },
-        create: { ...data, driveRefreshToken: refreshToken ?? null },
-        update: refreshToken ? { ...data, driveRefreshToken: refreshToken } : data,
+        create: { ...data, driveRefreshToken: encryptedRefreshToken },
+        update: encryptedRefreshToken ? { ...data, driveRefreshToken: encryptedRefreshToken } : data,
       });
       return true;
     },
