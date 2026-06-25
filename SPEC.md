@@ -247,7 +247,7 @@
 - 測試覆蓋率：API route 與 utils 純函式單元測試、關鍵流程 e2e 測試。
 - 錯誤處理：Drive 上傳失敗重試機制、AI provider 逾時/額度錯誤的使用者提示。
 - 效能：圖片列表分頁、縮圖快取策略待評估（是否需要 CDN）。
-- 安全：Drive OAuth token 加密儲存 `[x]`、API rate limiting。
+- 安全：Drive OAuth token 加密儲存 `[x]`、API rate limiting `[x]`。
 
 ### Drive OAuth refresh token 加密儲存 `[x]`
 **背景**：`User.driveRefreshToken` 原本以明碼存在 DB，一旦資料庫洩漏即可直接
@@ -268,6 +268,22 @@
 - 未涵蓋既有明碼資料的遷移：此專案尚未有正式上線資料，故沒有為已存在的
   明碼 token 寫資料轉換 migration；若日後資料庫已有明碼 token，需額外寫一次性
   腳本將其加密後覆寫。
+
+### API rate limiting `[x]`
+**背景**：產圖與語意搜尋會呼叫付費的 AI provider API（OpenAI image/embedding），
+沒有限流的話單一帳號或被盜用的 session 可能短時間內打爆額度或產生高額費用。
+**實作備註**：
+- `src/lib/rateLimit.ts`：`checkRateLimit(store, key, limit, windowMs, now)`
+  純函式（固定窗口計數器，操作傳入的 `Map`），與 `consumeRateLimit(key, limit,
+  windowMs)`（操作 module-level 的共用 `Map` singleton，供 route handler 使用）。
+  4 個測試 case（正常累計、超過限制拒絕、超過窗口後重新計數、不同 key 互不影響）。
+- 套用在兩個會呼叫付費 AI API 的端點：`POST /api/generation-jobs`
+  （每位使用者每分鐘 10 次）、`GET /api/images/semantic-search`
+  （每位使用者每分鐘 20 次）；key 用 `${route}:${userId}`，超過限制回傳
+  `429`，並帶 `Retry-After` header（秒數）。
+- 已知限制：狀態存在記憶體中，Vercel serverless 多執行個體環境下each instance
+  各自計數，等同於有效限制會隨並發的 instance 數量放大；目前流量規模可接受，
+  若日後流量變大或需要更嚴格保證，需改為共用儲存（如 Redis）。
 
 ## 優先開發路徑建議
 
