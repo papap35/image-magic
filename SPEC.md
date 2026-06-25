@@ -43,11 +43,17 @@
 - 欄位：`name, basePrompt`，屬於建立者 `userId`，已驗證不可跨帳號存取（service 層用 `findFirst({ id, userId })` 確認所有權）。
 - 輸入驗證：`lib/stylePreset.ts` 的 `validateStylePresetInput`（純函式，已測試）。
 
-#### 3b. 基礎風格指令管理 — UI `[ ]`
+#### 3b. 基礎風格指令管理 — UI `[x]`
 **背景**：3 號項目先完成 API，UI 列表/編輯表單為延伸項目。
-**功能規格**：
-- 列表頁顯示使用者所有 StylePreset。
-- 新增/編輯表單（呼叫上述 API），刪除需二次確認。
+**實作備註**：
+- `src/app/app/style-presets/page.tsx`：client component，掛載時呼叫
+  `GET /api/style-presets` 載入列表。
+- 同一頁面包含新增/編輯表單（共用同一組 input state，依是否有
+  `editingId` 決定呼叫 `POST` 或 `PATCH /api/style-presets/:id`），送出成功後
+  reload 列表並清空表單。
+- 列表每筆顯示「編輯」（帶入表單）與「刪除」按鈕，刪除前用
+  `window.confirm` 二次確認，呼叫 `DELETE /api/style-presets/:id`。
+- 錯誤訊息（API 回傳的 `error.message`）直接顯示在頁面上，不中斷其餘 UI。
 
 #### 4. 動態表單 Key-Value 擴充描述 — API `[x]`
 **背景**：使用者要能在基礎風格之外，動態新增任意數量的 key:value 描述欄位
