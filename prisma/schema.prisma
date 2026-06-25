@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  googleId      String          @unique
+  email         String          @unique
+  name          String?
+  avatarUrl     String?
+  driveFolderId String?
+  createdAt     DateTime        @default(now())
+
+  stylePresets    StylePreset[]
+  generationJobs  GenerationJob[]
+  images          Image[]
+  tags            Tag[]
+}
+
+model StylePreset {
+  id         String        @id @default(cuid())
+  userId     String
+  name       String
+  basePrompt String
+  createdAt  DateTime      @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fields PromptField[]
+}
+
+model PromptField {
+  id            String       @id @default(cuid())
+  stylePresetId String?
+  key           String
+  value         String
+  order         Int          @default(0)
+
+  stylePreset StylePreset? @relation(fields: [stylePresetId], references: [id], onDelete: Cascade)
+}
+
+enum JobStatus {
+  pending
+  success
+  failed
+}
+
+model GenerationJob {
+  id           String    @id @default(cuid())
+  userId       String
+  provider     String
+  promptFinal  String
+  params       Json?
+  status       JobStatus @default(pending)
+  resultUrl    String?
+  error        String?
+  createdAt    DateTime  @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images Image[]
+}
+
+model Image {
+  id            String   @id @default(cuid())
+  userId        String
+  jobId         String?
+  driveFileId   String?
+  driveViewUrl  String?
+  thumbnailUrl  String?
+  title         String?
+  description   String?
+  aiCaption     String?
+  width         Int?
+  height        Int?
+  createdAt     DateTime @default(now())
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  GenerationJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  tags ImageTag[]
+}
+
+model Tag {
+  id     String @id @default(cuid())
+  userId String
+  name   String
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images ImageTag[]
+
+  @@unique([userId, name])
+}
+
+model ImageTag {
+  imageId String
+  tagId   String
+
+  image Image @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([imageId, tagId])
+}
