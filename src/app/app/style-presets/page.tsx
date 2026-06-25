@@ -142,6 +142,7 @@ export default function StylePresetsPage() {
               <button type="button" onClick={() => handleDelete(preset.id)}>
                 刪除
               </button>
+              <a href={`/app/style-presets/${preset.id}/fields`}>管理動態欄位</a>
             </li>
           ))}
         </ul>
