@@ -118,11 +118,20 @@
 - API：`GET /api/images`（列表，僅回傳自己的圖片）、
   `PATCH /api/images/:id`（更新 title/description，空字串清空欄位）。
 
-#### 8. 標籤系統（使用者自訂） `[ ]`
+#### 8. 標籤系統（使用者自訂） `[x]` — API
 **背景**：方便分類與篩選圖片。
-**功能規格**：
-- `tags` 表（`id, user_id, name`，同使用者下名稱唯一）+ `image_tags` 多對多表。
-- UI 支援新增、移除標籤，輸入時自動建議既有標籤。
+**實作備註**：
+- `lib/tag.ts`：`validateTagName`（trim、非空、長度上限 50 字），5 個測試 case。
+- `services/tags.ts`：`listTags`、`findOrCreateTag`（同使用者下名稱唯一，
+  用 upsert 取得既有或建立）、`deleteTag`（所有權檢查）、`listImageTags`、
+  `addTagToImage`（圖片不屬於自己回傳 `null`，標籤不存在則自動建立）、
+  `removeTagFromImage`（圖片與標籤都需屬於自己才能移除關聯）。
+- API：`GET/POST /api/tags`（列表/建立）、`DELETE /api/tags/:id`、
+  `GET/POST /api/images/:id/tags`（列出/新增圖片標籤）、
+  `DELETE /api/images/:id/tags/:tagId`（移除圖片標籤）。
+- UI（輸入自動建議既有標籤）：拆成 8b 延伸項目，待前端開發階段一併處理。
+
+#### 8b. 標籤系統 UI（自動建議、新增/移除互動） `[ ]`
 
 #### 9. AI 辨識內容（自動 Caption + Tag 建議） `[ ]`
 **背景**：使用者不想每張圖都手動寫描述/標籤。
