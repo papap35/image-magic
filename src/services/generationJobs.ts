@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { toUsageDateKey } from "@/lib/generationJob";
 import { getImageProvider } from "@/services/imageProviders";
@@ -28,7 +29,7 @@ export async function createAndRunGenerationJob(userId: string, input: CreateGen
       userId,
       provider: input.provider,
       promptFinal: input.promptFinal,
-      params: input.params ?? undefined,
+      params: (input.params as Prisma.InputJsonValue | undefined) ?? undefined,
       status: "pending",
     },
   });
