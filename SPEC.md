@@ -68,11 +68,19 @@
 - 輸入驗證：`lib/promptField.ts` 的 `validatePromptFieldInput`（純函式，已測試）。
 - 一次性欄位（不存模板）不需要後端持久化，由前端直接帶入產圖請求即可，故不在此 API 範疇。
 
-#### 4b. 動態表單 Key-Value 擴充描述 — UI `[ ]`
+#### 4b. 動態表單 Key-Value 擴充描述 — UI `[x]`
 **背景**：4 號項目先完成 API，UI（新增/排序/刪除欄位、一次性 vs 模板切換）為延伸項目。
-**功能規格**：
-- 表單可動態新增/刪除 key:value 列，支援拖曳排序（呼叫 `order` 欄位更新）。
-- 切換「儲存為模板」（呼叫上述 API）或「僅本次使用」（不呼叫 API，前端暫存）。
+**實作備註**：
+- `src/app/app/style-presets/[id]/fields/page.tsx`：client component，掛載時呼叫
+  `GET /api/style-presets/:id/fields` 載入該風格指令的欄位列表（依 `order` 排序）。
+- 新增欄位表單呼叫 `POST .../fields`（`order` 帶入目前長度，新增於尾端）；
+  每列提供「上移/下移」按鈕，呼叫兩次 `PATCH .../fields/:fieldId` 互換相鄰兩筆
+  的 `order` 達成排序效果（未使用拖曳套件，避免引入額外依賴）；「刪除」呼叫
+  `DELETE .../fields/:fieldId`。
+- 從 `style-presets` 列表頁每筆新增「管理動態欄位」連結導向此頁。
+- 「一次性欄位 vs 儲存為模板」的切換待產圖請求表單（尚未開發，屬於本次
+  範疇外的生成流程 UI）一併設計時再實作，目前頁面僅管理屬於模板的欄位
+  （與 SPEC 4 號 API 範疇一致：一次性欄位本就不持久化、不經過此 API）。
 
 #### 5. AI 圖片生成 Provider 抽象層 `[x]`
 **背景**：免費額度容易用完，需要可切換/擴充多個 provider，並記錄用量。
