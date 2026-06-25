@@ -36,29 +36,50 @@
 
 ### P1 — 核心生成流程（產品價值主張）
 
-#### 3. 基礎風格指令（Style Preset）管理 `[ ]`
+#### 3. 基礎風格指令（Style Preset）管理 — API `[x]`
 **背景**：使用者要能建立、編輯、刪除自己的基礎風格 prompt 模板。
 **功能規格**：
-- CRUD API：`/api/style-presets`（GET/POST/PATCH/DELETE）。
-- 欄位：`name, base_prompt`，屬於建立者 `user_id`，不可跨帳號存取。
-- UI：列表 + 編輯表單。
+- CRUD API：`/api/style-presets`（GET/POST）、`/api/style-presets/:id`（PATCH/DELETE）。
+- 欄位：`name, basePrompt`，屬於建立者 `userId`，已驗證不可跨帳號存取（service 層用 `findFirst({ id, userId })` 確認所有權）。
+- 輸入驗證：`lib/stylePreset.ts` 的 `validateStylePresetInput`（純函式，已測試）。
 
-#### 4. 動態表單 Key-Value 擴充描述 `[ ]`
+#### 3b. 基礎風格指令管理 — UI `[ ]`
+**背景**：3 號項目先完成 API，UI 列表/編輯表單為延伸項目。
+**功能規格**：
+- 列表頁顯示使用者所有 StylePreset。
+- 新增/編輯表單（呼叫上述 API），刪除需二次確認。
+
+#### 4. 動態表單 Key-Value 擴充描述 — API `[x]`
 **背景**：使用者要能在基礎風格之外，動態新增任意數量的 key:value 描述欄位
 （例如 主體/背景/光線），組合進最終 prompt。
 **功能規格**：
-- UI 提供「新增欄位」按鈕，可自由輸入 key、value，可拖曳排序、可刪除。
-- 產圖前，後端依 `base_prompt + 依序串接的 key: value` 組成 `final_prompt`。
-- 欄位可選擇儲存為模板（關聯到某個 StylePreset）或僅供本次使用（一次性）。
+- CRUD API：`/api/style-presets/:id/fields`（GET/POST）、
+  `/api/style-presets/:id/fields/:fieldId`（PATCH/DELETE），所有權透過
+  `stylePresetId + userId` 雙重驗證。
+- 欄位 `order` 決定串接順序，`GET` 依 `order` 排序回傳。
+- `lib/prompt.ts` 的 `buildFinalPrompt(basePrompt, fields)` 已存在（bootstrap
+  階段示範用），純函式組合 `basePrompt + 依序串接的 key: value`。
+- 輸入驗證：`lib/promptField.ts` 的 `validatePromptFieldInput`（純函式，已測試）。
+- 一次性欄位（不存模板）不需要後端持久化，由前端直接帶入產圖請求即可，故不在此 API 範疇。
 
-#### 5. AI 圖片生成 Provider 抽象層 `[ ]`
+#### 4b. 動態表單 Key-Value 擴充描述 — UI `[ ]`
+**背景**：4 號項目先完成 API，UI（新增/排序/刪除欄位、一次性 vs 模板切換）為延伸項目。
+**功能規格**：
+- 表單可動態新增/刪除 key:value 列，支援拖曳排序（呼叫 `order` 欄位更新）。
+- 切換「儲存為模板」（呼叫上述 API）或「僅本次使用」（不呼叫 API，前端暫存）。
+
+#### 5. AI 圖片生成 Provider 抽象層 `[x]`
 **背景**：免費額度容易用完，需要可切換/擴充多個 provider，並記錄用量。
 **功能規格**：
-- 定義 `ImageProvider` interface（`generate(prompt, params): {url, raw}`）。
-- 先實作一個 provider（例如 OpenAI Images API），架構上預留第二個 provider 的擴充點。
-- `generation_jobs` 表記錄：`id, user_id, provider, prompt_final, params(json),
-  status(pending/success/failed), result_url, error, created_at`。
-- `usage_logs` 表：按 `user_id + provider + date` 累計呼叫次數，供未來限流/計費使用。
+- `ImageProvider` interface（`services/imageProviders/types.ts`）：`generate(params): {url, raw}`。
+- 已實作 `OpenAiImageProvider`，透過 `services/imageProviders/index.ts` 的
+  registry（`getImageProvider(name)`）依名稱取得 provider，架構上可直接新增第二個 provider。
+- `GenerationJob` model 記錄：`userId, provider, promptFinal, params(json),
+  status(pending/success/failed), resultUrl, error, createdAt`。
+- `UsageLog` model：按 `userId + provider + date`（UTC 當天）累計呼叫次數
+  （`lib/generationJob.ts` 的 `toUsageDateKey` 純函式，已測試），供未來限流/計費使用。
+- API：`POST /api/generation-jobs`（建立並立即執行）、`GET /api/generation-jobs`（列表）。
+- 失敗不拋例外，記錄在 `job.status = failed` + `job.error`，呼叫端依 HTTP 502 / job 內容判斷。
 
 #### 6. 產出圖片上傳 Google Drive `[ ]`
 **背景**：圖片要存在使用者自己的 Drive，不佔用我方儲存成本，所有權歸屬使用者。
