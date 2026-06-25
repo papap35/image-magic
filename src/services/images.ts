@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { buildGeneratedImageFileName } from "@/lib/driveUpload";
 import { normalizeClearableText } from "@/lib/image";
 import { ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
+import { addTagToImage } from "@/services/tags";
 
 /**
  * Download the provider's (temporary) result image and upload it into the
@@ -65,4 +66,26 @@ export async function updateImage(userId: string, id: string, input: UpdateImage
       ...(input.description !== undefined ? { description: normalizeClearableText(input.description) } : {}),
     },
   });
+}
+
+/** Apply all AI-suggested tags as real tags on the image, then clear the suggestion list. */
+export async function acceptAiTagSuggestions(userId: string, id: string) {
+  const existing = await prisma.image.findFirst({ where: { id, userId } });
+  if (!existing) {
+    return null;
+  }
+  const suggestions = Array.isArray(existing.aiTagSuggestions) ? (existing.aiTagSuggestions as string[]) : [];
+  for (const tagName of suggestions) {
+    await addTagToImage(userId, id, tagName);
+  }
+  return prisma.image.update({ where: { id }, data: { aiTagSuggestions: [] } });
+}
+
+/** Discard the AI-suggested tags without applying them. */
+export async function dismissAiTagSuggestions(userId: string, id: string) {
+  const existing = await prisma.image.findFirst({ where: { id, userId } });
+  if (!existing) {
+    return null;
+  }
+  return prisma.image.update({ where: { id }, data: { aiTagSuggestions: [] } });
 }
