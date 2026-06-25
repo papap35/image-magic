@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { consumeRateLimit } from "@/lib/rateLimit";
 import { getCurrentUserId } from "@/lib/session";
 import { createAndRunGenerationJob, listGenerationJobs } from "@/services/generationJobs";
+
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -16,6 +20,14 @@ export async function POST(request: Request) {
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Not signed in" } }, { status: 401 });
+  }
+
+  const rateLimit = consumeRateLimit(`generation-jobs:${userId}`, RATE_LIMIT, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many requests, please try again later" } },
+      { status: 429, headers: { "Retry-After": Math.ceil(rateLimit.retryAfterMs / 1000).toString() } },
+    );
   }
 
   const body = await request.json().catch(() => null);
