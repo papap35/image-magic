@@ -171,12 +171,34 @@
   tsvector 欄位的複雜度；待資料量大時可評估改為 materialized view 或 trigger。
 - API：`GET /api/images/search?q=關鍵字`，僅回傳該使用者自己的圖片。
 
-#### 11. AI 語意搜尋 `[ ]`
+#### 11. AI 語意搜尋 `[x]`
 **背景**：關鍵字搜尋無法理解語意相近但用詞不同的查詢。
-**功能規格**：
-- 對每張圖的 `ai_caption`（或 final_prompt）計算 embedding，存入 `pgvector` 欄位。
-- 查詢字串即時轉 embedding，用 cosine similarity 排序回傳前 N 筆。
-- API：`GET /api/images/semantic-search?q=描述文字`。
+**實作備註**：
+- Prisma schema 啟用 `postgresqlExtensions` preview feature 與
+  `extensions = [vector]`，`Image` model 新增
+  `embedding Unsupported("vector(1536)")?` 欄位；migration 執行
+  `CREATE EXTENSION IF NOT EXISTS vector;` 再新增欄位。`Unsupported` 型別無法
+  透過一般 Prisma Client API 讀寫，故相關查詢/寫入皆用 `$queryRaw`/`$executeRaw`
+  + `Prisma.sql` 參數化。
+- CI 的 postgres service image 從 `postgres:16` 換成 `pgvector/pgvector:pg16`，
+  否則 `CREATE EXTENSION vector` 在 CI 會失敗。
+- `lib/embedding.ts`：`buildEmbeddingInputText({title, description, aiCaption})`
+  （合併非空欄位成一段文字）、`toPgVectorLiteral(values)`（數字陣列轉
+  pgvector literal 字串 `[0.1,0.2,...]`），純函式，6 個測試 case。
+- `services/embeddings.ts`：`generateEmbedding(text)` 呼叫 OpenAI Embeddings API
+  （`text-embedding-3-small`），回傳 1536 維向量。
+- `services/imageEmbeddings.ts`：`generateAndStoreImageEmbedding(imageId)`，
+  best-effort（與 AI 辨識一致：失敗不拋例外，不影響呼叫端），用
+  `$executeRaw` 寫入 `embedding` 欄位；沒有可用文字（title/description/aiCaption
+  皆空）時直接跳過。
+- 串接在 `services/imageRecognition.ts`：AI 辨識成功寫入 `aiCaption` 後接著呼叫
+  `generateAndStoreImageEmbedding`，讓 embedding 反映最新的 caption。
+- `services/imageSemanticSearch.ts`：`semanticSearchImages(userId, query)`，
+  將查詢字串轉 embedding 後用 `Prisma.sql` 執行
+  `ORDER BY embedding <=> ${literal}::vector LIMIT 20`（cosine distance），
+  排除尚未產生 embedding 的圖片；範圍限定在 `userId`。
+- API：`GET /api/images/semantic-search?q=描述文字`，沿用 `validateSearchQuery`
+  做輸入驗證，僅回傳該使用者自己的圖片。
 
 ---
 
