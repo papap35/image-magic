@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { buildGeneratedImageFileName } from "@/lib/driveUpload";
+import { normalizeClearableText } from "@/lib/image";
 import { ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
 
 /**
@@ -36,6 +37,32 @@ export async function uploadGeneratedImageToDrive(userId: string, jobId: string,
       jobId,
       driveFileId: uploaded.fileId,
       driveViewUrl: uploaded.viewUrl,
+    },
+  });
+}
+
+export function listImages(userId: string) {
+  return prisma.image.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export interface UpdateImageInput {
+  title?: string | null;
+  description?: string | null;
+}
+
+export async function updateImage(userId: string, id: string, input: UpdateImageInput) {
+  const existing = await prisma.image.findFirst({ where: { id, userId } });
+  if (!existing) {
+    return null;
+  }
+  return prisma.image.update({
+    where: { id },
+    data: {
+      ...(input.title !== undefined ? { title: normalizeClearableText(input.title) } : {}),
+      ...(input.description !== undefined ? { description: normalizeClearableText(input.description) } : {}),
     },
   });
 }
