@@ -50,7 +50,8 @@ GitHub Actions（`.github/workflows/ci.yml`）兩個 job：
    lint → prisma migrate deploy（含 `npm ci` 的 `postinstall` 已先跑過
    `prisma generate`）→ 單元測試 → build。
 2. **`deploy-production`**：只在 push 到 `main` 且上一個 job 成功後執行，會：
-   - 用 `PROD_DATABASE_URL` 對生產資料庫跑 `prisma migrate deploy`。
+   - 用 `PROD_DATABASE_URL`/`PROD_DIRECT_DATABASE_URL` 對生產資料庫跑
+     `prisma migrate deploy`。
    - 用 Vercel CLI（`vercel pull` → `vercel build --prod` →
      `vercel deploy --prebuilt --prod`）部署到 Vercel production。
 
@@ -63,13 +64,16 @@ GitHub Actions（`.github/workflows/ci.yml`）兩個 job：
 | `VERCEL_TOKEN` | Vercel 帳號的 Personal Access Token |
 | `VERCEL_ORG_ID` | 在 Vercel 專案目錄執行 `vercel link` 後，`.vercel/project.json` 裡的 `orgId` |
 | `VERCEL_PROJECT_ID` | 同上的 `projectId` |
-| `PROD_DATABASE_URL` | 生產環境 PostgreSQL 連線字串，**資料庫需啟用 `pgvector` extension**（例如 Neon、Supabase 或自架 `pgvector/pgvector` 都支援） |
+| `PROD_DATABASE_URL` | 生產環境 PostgreSQL 連線字串，**資料庫需啟用 `pgvector` extension**（例如 Neon、Supabase 或自架 `pgvector/pgvector` 都支援）。若資料庫前面有 PgBouncer/連線池（Supabase 的 Connection Pooler、Neon 的 pooled endpoint），記得加上 `?pgbouncer=true`，否則 serverless 環境下會出現 `prepared statement "sX" already exists`（PostgresError 42P05） |
+| `PROD_DIRECT_DATABASE_URL` | 同一個資料庫的**直連**字串（不走 pooler，通常是另一個 port，例如 Supabase 是 5432 而 pooler 是 6543），只給 `prisma migrate deploy` 用 |
 
 **Vercel 專案的環境變數**（Vercel Dashboard → Project → Settings →
 Environment Variables，設定在 `Production` 環境）：
-`DATABASE_URL`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`NEXTAUTH_URL`
-（正式網域）、`NEXTAUTH_SECRET`、`AI_IMAGE_PROVIDER_API_KEY`、
-`ANTHROPIC_API_KEY`、`PROMPT_ENHANCEMENT_PASSWORD`、
+`DATABASE_URL`（同上述 `PROD_DATABASE_URL`，pooled + `pgbouncer=true`）、
+`DIRECT_URL`（同 `PROD_DIRECT_DATABASE_URL`，目前只有跑 migration 時會用到，
+App runtime 不需要但建議一起設定以防未來用到）、`GOOGLE_CLIENT_ID`、
+`GOOGLE_CLIENT_SECRET`、`NEXTAUTH_URL`（正式網域）、`NEXTAUTH_SECRET`、
+`AI_IMAGE_PROVIDER_API_KEY`、`ANTHROPIC_API_KEY`、`PROMPT_ENHANCEMENT_PASSWORD`、
 `DRIVE_TOKEN_ENCRYPTION_KEY`，內容與 `.env.example` 對應。
 
 設定好以上 secrets 與環境變數後，PR 合併進 `main` 即會自動跑完整 CI，
