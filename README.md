@@ -68,8 +68,8 @@ GitHub Actions（`.github/workflows/ci.yml`）兩個 job：
 **Vercel 專案的環境變數**（Vercel Dashboard → Project → Settings →
 Environment Variables，設定在 `Production` 環境）：
 `DATABASE_URL`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`NEXTAUTH_URL`
-（正式網域）、`NEXTAUTH_SECRET`、`AI_IMAGE_PROVIDER_API_KEY`，內容與
-`.env.example` 對應。
+（正式網域）、`NEXTAUTH_SECRET`、`AI_IMAGE_PROVIDER_API_KEY`、
+`DRIVE_TOKEN_ENCRYPTION_KEY`，內容與 `.env.example` 對應。
 
 設定好以上 secrets 與環境變數後，PR 合併進 `main` 即會自動跑完整 CI，
 通過後自動部署到 Vercel production，不需要手動操作。
