@@ -116,6 +116,23 @@
   Drive 上傳失敗，由呼叫端依 job 狀態判斷。
 - Thumbnail / width / height 欄位先保留為空，待 P2 圖庫功能再補（非本次範疇）。
 
+#### 6b. AI 圖片生成請求 — UI `[x]`
+**背景**：5、6 號項目完成了產圖 API（建立 GenerationJob、上傳 Drive），
+但使用者仍無法透過介面真正觸發生成，是整個系統可被使用的關鍵入口。
+**實作備註**：
+- `src/app/app/generate/page.tsx`：client component。
+- 下拉選單選擇要套用的 `StylePreset`（選填，選了會呼叫
+  `GET /api/style-presets/:id/fields` 載入該模板的固定欄位並顯示）。
+- 額外提供「一次性欄位」輸入區（key/value），僅存在前端 state，不呼叫任何
+  API（符合 SPEC 4 號項目「一次性欄位不需要後端持久化」的範疇），與模板欄位
+  一起傳入既有的 `lib/prompt.ts` 的 `buildFinalPrompt(basePrompt, fields)`
+  即時組成最終 prompt 預覽。
+- 送出呼叫 `POST /api/generation-jobs`（`provider` 固定帶 `"openai"`，目前
+  registry 中唯一已實作的 provider），並重新載入下方的生成紀錄列表。
+- 生成紀錄列表呼叫 `GET /api/generation-jobs`，依 `status` 顯示結果圖片
+  （`resultUrl`）或錯誤訊息（`error`）。
+- `src/app/app/page.tsx` 補上導向「產生圖片／圖庫／風格指令」三個頁面的連結。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
