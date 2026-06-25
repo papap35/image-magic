@@ -36,12 +36,18 @@
 
 ### P1 — 核心生成流程（產品價值主張）
 
-#### 3. 基礎風格指令（Style Preset）管理 `[ ]`
+#### 3. 基礎風格指令（Style Preset）管理 — API `[x]`
 **背景**：使用者要能建立、編輯、刪除自己的基礎風格 prompt 模板。
 **功能規格**：
-- CRUD API：`/api/style-presets`（GET/POST/PATCH/DELETE）。
-- 欄位：`name, base_prompt`，屬於建立者 `user_id`，不可跨帳號存取。
-- UI：列表 + 編輯表單。
+- CRUD API：`/api/style-presets`（GET/POST）、`/api/style-presets/:id`（PATCH/DELETE）。
+- 欄位：`name, basePrompt`，屬於建立者 `userId`，已驗證不可跨帳號存取（service 層用 `findFirst({ id, userId })` 確認所有權）。
+- 輸入驗證：`lib/stylePreset.ts` 的 `validateStylePresetInput`（純函式，已測試）。
+
+#### 3b. 基礎風格指令管理 — UI `[ ]`
+**背景**：3 號項目先完成 API，UI 列表/編輯表單為延伸項目。
+**功能規格**：
+- 列表頁顯示使用者所有 StylePreset。
+- 新增/編輯表單（呼叫上述 API），刪除需二次確認。
 
 #### 4. 動態表單 Key-Value 擴充描述 `[ ]`
 **背景**：使用者要能在基礎風格之外，動態新增任意數量的 key:value 描述欄位
