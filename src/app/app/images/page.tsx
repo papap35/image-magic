@@ -86,32 +86,35 @@ function ImageTagEditor({ imageId, allTags }: { imageId: string; allTags: Tag[] 
     <div>
       {error && <p role="alert">{error}</p>}
       {loading ? (
-        <p>載入標籤中...</p>
+        <p className="hint">載入標籤中...</p>
       ) : (
-        <ul>
+        <div>
           {tags.map((tag) => (
-            <li key={tag.id}>
+            <span className="tag-pill" key={tag.id}>
               {tag.name}
               <button type="button" onClick={() => handleRemove(tag.id)}>
-                移除
+                ✕
               </button>
-            </li>
+            </span>
           ))}
-        </ul>
+        </div>
       )}
-      <form onSubmit={handleAdd}>
+      <form onSubmit={handleAdd} className="button-row" style={{ marginTop: 8 }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="新增標籤"
           list={`tag-suggestions-${imageId}`}
+          style={{ flex: 1 }}
         />
         <datalist id={`tag-suggestions-${imageId}`}>
           {suggestions.map((tag) => (
             <option key={tag.id} value={tag.name} />
           ))}
         </datalist>
-        <button type="submit">新增</button>
+        <button type="submit" className="secondary">
+          新增
+        </button>
       </form>
     </div>
   );
@@ -157,11 +160,13 @@ export default function ImagesPage() {
       ) : images.length === 0 ? (
         <p>尚未有任何圖片。</p>
       ) : (
-        <ul>
+        <ul className="card-list">
           {images.map((image) => (
-            <li key={image.id}>
+            <li className="card-list-item" key={image.id}>
               <strong>{image.title ?? "（未命名）"}</strong>
-              {image.thumbnailUrl && <img src={image.thumbnailUrl} alt={image.title ?? ""} width={120} />}
+              {image.thumbnailUrl && (
+                <img className="thumb" src={image.thumbnailUrl} alt={image.title ?? ""} width={160} />
+              )}
               <ImageTagEditor imageId={image.id} allTags={allTags} />
             </li>
           ))}
