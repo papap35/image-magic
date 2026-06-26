@@ -236,6 +236,34 @@
   錯誤訊息）一定完整呈現，不會被截斷或省略。產生圖片頁與圖庫（`/app/images`）
   是不同用途的頁面，不互相取代或導流。
 
+#### 6f. 全站 Header、品牌風格與 Dark Mode `[x]`
+**背景**：原本每個 `/app/*` 頁面只有一條簡單的導覽列，沒有品牌識別、沒有顯示
+登入使用者資訊，也沒有 dark mode。
+**實作備註**：
+- `src/components/Logo.tsx`：品牌標誌（SVG 星芒圖示 + 漸層文字 wordmark），
+  套用 `--color-primary` 到 `--color-accent` 的漸層色。
+- `src/components/Header.tsx`：移到 root layout 全站套用的 header，左側放
+  Logo（連到 `/app` 或 `/`），中間在已登入時顯示原本四個導覽連結，右側放
+  `ThemeToggle` 與使用者頭像選單（`avatar-button` + dropdown，顯示姓名/
+  Email、登出按鈕呼叫 `next-auth/react` 的 `signOut`）；未登入時右側顯示
+  「登入」按鈕取代頭像。
+- `src/app/layout.tsx`：改為 async server component，透過
+  `getServerSession(authOptions)` 取得使用者資訊傳給 `Header`；並在
+  `<head>` 內嵌一段 bootstrap script，在 hydrate 前依
+  `localStorage.theme`（沒有設定時 fallback 到
+  `prefers-color-scheme: dark`）決定 `document.documentElement.dataset.theme`，
+  避免換頁/重新整理時閃一下錯誤主題（flash of wrong theme）。
+- `src/components/ThemeToggle.tsx`：純前端切換 `light`/`dark`，寫回
+  `localStorage.theme` 並更新 `documentElement.dataset.theme`；CSS 變數已經
+  全站共用（`--color-bg`/`--color-surface`/`--color-text`/...），只需在
+  `globals.css` 新增 `:root[data-theme="dark"]` 覆寫整套色票，其餘元件樣式
+  不用個別修改即可同時支援兩種主題。
+- `src/app/app/layout.tsx`：移除原本內嵌的 `<nav>`（已被全站 Header 取代），
+  改為單純的 passthrough layout。
+- 既有少數寫死亮色的元件（`.tag-pill`、`.status-badge.pending/.success`）
+  改用帶 fallback 的 CSS 變數（例如 `var(--color-tag-bg, #eef2ff)`），並在
+  dark 主題中提供對應深色版本，確保在 dark mode 下仍有足夠對比度。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
