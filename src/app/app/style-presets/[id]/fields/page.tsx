@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { Spinner } from "@/components/Spinner";
 
 interface PromptField {
   id: string;
@@ -142,7 +143,7 @@ export default function PromptFieldsPage({ params }: { params: { id: string } })
       </form>
 
       {loading ? (
-        <p>載入中...</p>
+        <Spinner label="載入中..." />
       ) : fields.length === 0 ? (
         <p>尚未新增任何欄位。</p>
       ) : (

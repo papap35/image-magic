@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { buildFinalPrompt, type PromptFieldInput } from "@/lib/prompt";
+import { Spinner } from "@/components/Spinner";
 
 interface StylePreset {
   id: string;
@@ -52,6 +53,7 @@ export default function GeneratePage() {
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [referenceImage, setReferenceImage] = useState<{ base64: string; mimeType: string } | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
@@ -92,10 +94,9 @@ export default function GeneratePage() {
   }
 
   useEffect(() => {
-    loadPresets();
-    loadJobs();
-    loadProviders();
-    loadSavedProviders();
+    Promise.all([loadPresets(), loadJobs(), loadProviders(), loadSavedProviders()]).finally(() => {
+      setPageLoading(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -223,6 +224,10 @@ export default function GeneratePage() {
       <h1>產生圖片</h1>
       {error && <p role="alert">{error}</p>}
 
+      {pageLoading ? (
+        <Spinner label="載入中..." />
+      ) : (
+      <>
       <form onSubmit={handleSubmit}>
         <div className="card">
           <div className="field">
@@ -375,22 +380,56 @@ export default function GeneratePage() {
       </form>
 
       <h2>生成紀錄</h2>
-      {jobs.length === 0 ? (
-        <p>尚未有任何生成請求。</p>
-      ) : (
-        <ul className="card-list">
-          {jobs.map((job) => (
-            <li className="card-list-item" key={job.id}>
-              <span className={`status-badge ${job.status}`}>{job.status}</span>
-              <p>{job.promptFinal}</p>
-              {job.status === "success" && job.resultUrl && (
-                <img className="thumb" src={job.resultUrl} alt={job.promptFinal} width={160} />
-              )}
-              {job.status === "failed" && <p role="alert">錯誤：{job.error}</p>}
-            </li>
-          ))}
-        </ul>
+      {jobs.length === 0 ? <p>尚未有任何生成請求。</p> : <GenerationJobsTable jobs={jobs} />}
+      </>
       )}
     </main>
+  );
+}
+
+function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <table className="jobs-table">
+      <thead>
+        <tr>
+          <th>狀態</th>
+          <th>Prompt</th>
+          <th>結果</th>
+          <th>時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        {jobs.map((job) => {
+          const expanded = expandedId === job.id;
+          return (
+            <tr key={job.id}>
+              <td>
+                <span className={`status-badge ${job.status}`}>{job.status}</span>
+              </td>
+              <td>
+                <p className={expanded ? "prompt-cell expanded" : "prompt-cell"}>{job.promptFinal}</p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setExpandedId(expanded ? null : job.id)}
+                >
+                  {expanded ? "收合" : "展開"}
+                </button>
+              </td>
+              <td>
+                {job.status === "success" && job.resultUrl && (
+                  <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                )}
+                {job.status === "failed" && <p role="alert">錯誤：{job.error}</p>}
+                {job.status === "pending" && <span className="hint">處理中...</span>}
+              </td>
+              <td className="hint">{new Date(job.createdAt).toLocaleString()}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
