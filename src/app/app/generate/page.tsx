@@ -52,6 +52,7 @@ export default function GeneratePage() {
 
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -108,6 +109,18 @@ export default function GeneratePage() {
       .then((res) => res.json())
       .then((data) => setTemplateFields(data.fields ?? []));
   }, [presetId]);
+
+  // The generation request is a single blocking fetch with no incremental
+  // progress from the provider — this timer is purely so the button shows
+  // elapsed time instead of looking stuck on a static "生成中..." label.
+  useEffect(() => {
+    if (!submitting) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [submitting]);
 
   const basePrompt = presets.find((p) => p.id === presetId)?.basePrompt ?? "";
   const allFields: PromptFieldInput[] = [...templateFields, ...extraFields];
@@ -374,8 +387,9 @@ export default function GeneratePage() {
           </div>
 
           <button type="submit" disabled={submitting}>
-            {submitting ? "生成中..." : "開始生成"}
+            {submitting ? `生成中... 已等待 ${elapsedSeconds} 秒` : "開始生成"}
           </button>
+          {submitting && <p className="hint">圖片生成通常需要數十秒，請耐心等候，畫面不會卡住。</p>}
         </div>
       </form>
 
@@ -387,11 +401,50 @@ export default function GeneratePage() {
   );
 }
 
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+
 function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [page, setPage] = useState(1);
+
+  const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageJobs = jobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <table className="jobs-table">
+    <>
+      <div className="pagination-controls">
+        <label>
+          每頁顯示
+          <select
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size} 筆
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="pagination-pages">
+          {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
+            <button
+              key={pageNumber}
+              type="button"
+              className={pageNumber === currentPage ? "secondary active" : "secondary"}
+              onClick={() => setPage(pageNumber)}
+            >
+              {pageNumber}
+            </button>
+          ))}
+        </div>
+      </div>
+      <table className="jobs-table">
       <thead>
         <tr>
           <th>狀態</th>
@@ -401,7 +454,7 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
         </tr>
       </thead>
       <tbody>
-        {jobs.map((job) => {
+        {pageJobs.map((job) => {
           const expanded = expandedId === job.id;
           return (
             <tr key={job.id}>
@@ -430,6 +483,7 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
           );
         })}
       </tbody>
-    </table>
+      </table>
+    </>
   );
 }
