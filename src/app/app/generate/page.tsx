@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { buildFinalPrompt, type PromptFieldInput } from "@/lib/prompt";
+import { Spinner } from "@/components/Spinner";
 
 interface StylePreset {
   id: string;
@@ -52,6 +53,7 @@ export default function GeneratePage() {
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [referenceImage, setReferenceImage] = useState<{ base64: string; mimeType: string } | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
@@ -92,10 +94,9 @@ export default function GeneratePage() {
   }
 
   useEffect(() => {
-    loadPresets();
-    loadJobs();
-    loadProviders();
-    loadSavedProviders();
+    Promise.all([loadPresets(), loadJobs(), loadProviders(), loadSavedProviders()]).finally(() => {
+      setPageLoading(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -223,6 +224,10 @@ export default function GeneratePage() {
       <h1>產生圖片</h1>
       {error && <p role="alert">{error}</p>}
 
+      {pageLoading ? (
+        <Spinner label="載入中..." />
+      ) : (
+      <>
       <form onSubmit={handleSubmit}>
         <div className="card">
           <div className="field">
@@ -374,22 +379,25 @@ export default function GeneratePage() {
         </div>
       </form>
 
-      <h2>生成紀錄</h2>
+      <h2>最新生成結果</h2>
       {jobs.length === 0 ? (
         <p>尚未有任何生成請求。</p>
       ) : (
-        <ul className="card-list">
-          {jobs.map((job) => (
-            <li className="card-list-item" key={job.id}>
-              <span className={`status-badge ${job.status}`}>{job.status}</span>
-              <p>{job.promptFinal}</p>
-              {job.status === "success" && job.resultUrl && (
-                <img className="thumb" src={job.resultUrl} alt={job.promptFinal} width={160} />
-              )}
-              {job.status === "failed" && <p role="alert">錯誤：{job.error}</p>}
-            </li>
-          ))}
-        </ul>
+        <div className="card-list-item">
+          <span className={`status-badge ${jobs[0].status}`}>{jobs[0].status}</span>
+          <p>{jobs[0].promptFinal}</p>
+          {jobs[0].status === "success" && jobs[0].resultUrl && (
+            <img className="latest-job-image" src={jobs[0].resultUrl} alt={jobs[0].promptFinal} />
+          )}
+          {jobs[0].status === "failed" && <p role="alert">錯誤：{jobs[0].error}</p>}
+        </div>
+      )}
+      {jobs.length > 1 && (
+        <p className="hint">
+          其餘的生成紀錄請到<a href="/app/images">圖庫</a>查看。
+        </p>
+      )}
+      </>
       )}
     </main>
   );

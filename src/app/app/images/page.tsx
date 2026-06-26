@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { Spinner } from "@/components/Spinner";
 
 interface ImageItem {
   id: string;
@@ -86,7 +87,7 @@ function ImageTagEditor({ imageId, allTags }: { imageId: string; allTags: Tag[] 
     <div>
       {error && <p role="alert">{error}</p>}
       {loading ? (
-        <p className="hint">載入標籤中...</p>
+        <Spinner label="載入標籤中..." />
       ) : (
         <div>
           {tags.map((tag) => (
@@ -156,7 +157,7 @@ export default function ImagesPage() {
       <h1>我的圖庫</h1>
       {error && <p role="alert">{error}</p>}
       {loading ? (
-        <p>載入中...</p>
+        <Spinner label="載入圖庫中..." />
       ) : images.length === 0 ? (
         <p>尚未有任何圖片。</p>
       ) : (

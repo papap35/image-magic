@@ -219,6 +219,22 @@
 - `src/app/globals.css`：新增 `.app-nav-persistent` 樣式（`position: sticky;
   top: 0`，置中對齊 `main` 的 `max-width: 720px`），讓導覽列固定在頁面最上方。
 
+#### 6e. Loading 狀態與生成紀錄精簡 `[x]`
+**背景**：資料讀取中時頁面一片空白，使用者不知道在等待什麼；產生圖片頁的
+「生成紀錄」會無限往下長，越用越長。
+**實作備註**：
+- `src/components/Spinner.tsx`：共用的轉圈 loading 元件（`.spinner` +
+  `.spinner-row` CSS，純 CSS keyframe 動畫，不引入額外套件），套用在
+  `generate`、`images`、`style-presets`、`style-presets/[id]/fields` 四個
+  頁面原本顯示「載入中...」純文字的地方。
+- `generate/page.tsx`：新增 `pageLoading` state，等 presets/jobs/providers/
+  savedProviders 四個初始請求都完成（`Promise.all`）才顯示表單，避免表單
+  在資料尚未到位時就可互動。
+- 「生成紀錄」改為只顯示最新一筆（`jobs[0]`，API 本來就是 `createdAt desc`
+  排序）的大圖預覽（`.latest-job-image`），不再渲染會無限增長的列表；超過
+  一筆時顯示提示文字導向 `/app/images`（圖庫）查看其餘紀錄，避免兩處重複
+  維護同一份歷史紀錄 UI。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）

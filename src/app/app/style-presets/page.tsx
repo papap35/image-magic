@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { Spinner } from "@/components/Spinner";
 
 interface StylePreset {
   id: string;
@@ -129,7 +130,7 @@ export default function StylePresetsPage() {
 
       <h2>已建立的風格指令</h2>
       {loading ? (
-        <p>載入中...</p>
+        <Spinner label="載入中..." />
       ) : presets.length === 0 ? (
         <p>尚未建立任何風格指令。</p>
       ) : (
