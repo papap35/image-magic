@@ -1,8 +1,24 @@
 import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./types";
 
-// dall-e-2 is the only OpenAI image model that supports both generations and
-// edits (img2img) with the same account access, so both code paths use it.
-const DEFAULT_MODEL = "dall-e-2";
+// gpt-image-1 is OpenAI's current image model and supports both generation
+// and edits (img2img) under the same account access. dall-e-2/dall-e-3 are
+// being phased out and may not exist for newer API keys/projects.
+const DEFAULT_MODEL = "gpt-image-1";
+
+function extractImageUrl(raw: { data?: Array<{ url?: string; b64_json?: string }> }): string | undefined {
+  const entry = raw?.data?.[0];
+  if (!entry) {
+    return undefined;
+  }
+  if (entry.url) {
+    return entry.url;
+  }
+  // gpt-image-1 always returns base64 (no hosted url), unlike dall-e-2/3.
+  if (entry.b64_json) {
+    return `data:image/png;base64,${entry.b64_json}`;
+  }
+  return undefined;
+}
 
 export class OpenAiImageProvider implements ImageProvider {
   readonly name = "openai";
@@ -36,7 +52,7 @@ export class OpenAiImageProvider implements ImageProvider {
       throw new Error(raw?.error?.message ?? `OpenAI image generation failed (${response.status})`);
     }
 
-    const url = raw?.data?.[0]?.url;
+    const url = extractImageUrl(raw);
     if (!url) {
       throw new Error("OpenAI response did not include an image url");
     }
@@ -70,7 +86,7 @@ export class OpenAiImageProvider implements ImageProvider {
       throw new Error(raw?.error?.message ?? `OpenAI image edit failed (${response.status})`);
     }
 
-    const url = raw?.data?.[0]?.url;
+    const url = extractImageUrl(raw);
     if (!url) {
       throw new Error("OpenAI response did not include an image url");
     }

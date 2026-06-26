@@ -194,7 +194,12 @@
   `referenceImage?: { base64, mimeType }`；有提供時走圖生圖路徑，沒有則維持
   原本的純文字出圖。
 - `openai`：有參考圖片時改打 `/v1/images/edits`（multipart/form-data，帶
-  `image`/`prompt`/`size`/`n`），沒有則維持原本的 `/v1/images/generations`。
+  `image`/`prompt`/`size`/`n`），沒有則維持原本的 `/v1/images/generations`；
+  兩者都帶 `model: "gpt-image-1"`（OpenAI Images API 兩個 endpoint都要求帶
+  `model`，且 `gpt-image-1` 是目前同時支援生成與編輯的模型）。`gpt-image-1`
+  的回應只有 `b64_json`、沒有 `url`，因此 provider 內的 `extractImageUrl`
+  會在沒有 `url` 時把 `b64_json` 轉成 `data:` URL，與既有「provider 統一回傳
+  `{ url }`」的介面保持相容。
 - `huggingface`：有參考圖片時改打 `timbrooks/instruct-pix2pix`（instruction-
   guided 圖片編輯模型，prompt 當作編輯指令），請求改為
   `{ inputs: "data:<mimeType>;base64,<...>", parameters: { prompt } }`；沒有
