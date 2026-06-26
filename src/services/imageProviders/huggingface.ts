@@ -1,5 +1,10 @@
 import type { GenerateImageParams, GenerateImageResult, ImageProvider, ReferenceImage } from "./types";
 
+// Hugging Face deprecated api-inference.huggingface.co in favor of the
+// Inference Providers router; the hf-inference provider keeps the same
+// request/response shape as the old serverless Inference API.
+const INFERENCE_BASE_URL = "https://router.huggingface.co/hf-inference/models";
+
 const DEFAULT_MODEL = "stabilityai/stable-diffusion-xl-base-1.0";
 // instruct-pix2pix is an instruction-guided image-editing model — it takes a
 // source image plus a text instruction, which matches the img2img contract
@@ -40,7 +45,7 @@ export class HuggingFaceImageProvider implements ImageProvider {
   }
 
   private requestTextToImage(prompt: string, apiKey: string) {
-    return fetch(`https://api-inference.huggingface.co/models/${DEFAULT_MODEL}`, {
+    return fetch(`${INFERENCE_BASE_URL}/${DEFAULT_MODEL}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -51,7 +56,7 @@ export class HuggingFaceImageProvider implements ImageProvider {
   }
 
   private requestImg2Img(prompt: string, referenceImage: ReferenceImage, apiKey: string) {
-    return fetch(`https://api-inference.huggingface.co/models/${DEFAULT_IMG2IMG_MODEL}`, {
+    return fetch(`${INFERENCE_BASE_URL}/${DEFAULT_IMG2IMG_MODEL}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

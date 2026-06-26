@@ -295,6 +295,19 @@
   PNG），在 build/request 時動態產生 32x32 favicon 與 180x180 Apple touch
   icon，圖案與 Header logo 一致；不需要額外的圖片處理套件或外部美術檔案。
 
+#### 6i. Hugging Face 改用新版 Inference Providers Router 端點 `[x]`
+**背景**：Hugging Face 已棄用舊版無伺服器 Inference API 網域
+`api-inference.huggingface.co`，改由 Inference Providers 的
+`router.huggingface.co` 統一轉發。部署在 Vercel 上呼叫舊網域時收到
+`fetch failed: getaddrinfo ENOTFOUND api-inference.huggingface.co (ENOTFOUND)`，
+原因是該網域已經從 DNS 移除，並非 Vercel 網路限制問題。
+**實作備註**：
+- `src/services/imageProviders/huggingface.ts`：新增 `INFERENCE_BASE_URL =
+  "https://router.huggingface.co/hf-inference/models"` 常數，文字生圖
+  （`requestTextToImage`）與 img2img（`requestImg2Img`）兩個 fetch 呼叫都改用
+  這個新的 base URL；`hf-inference` provider 沿用與舊版 API 完全相同的
+  request/response 格式，所以只需要換網域，不用改任何請求內容。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
