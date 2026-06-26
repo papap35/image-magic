@@ -1,5 +1,9 @@
 import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./types";
 
+// dall-e-2 is the only OpenAI image model that supports both generations and
+// edits (img2img) with the same account access, so both code paths use it.
+const DEFAULT_MODEL = "dall-e-2";
+
 export class OpenAiImageProvider implements ImageProvider {
   readonly name = "openai";
 
@@ -20,6 +24,7 @@ export class OpenAiImageProvider implements ImageProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        model: DEFAULT_MODEL,
         prompt: params.prompt,
         size: params.size ?? "1024x1024",
         n: 1,
@@ -46,6 +51,7 @@ export class OpenAiImageProvider implements ImageProvider {
   ): Promise<GenerateImageResult> {
     const imageBytes = Buffer.from(referenceImage.base64, "base64");
     const form = new FormData();
+    form.append("model", DEFAULT_MODEL);
     form.append("image", new Blob([imageBytes], { type: referenceImage.mimeType }), "reference.png");
     form.append("prompt", params.prompt);
     form.append("size", params.size ?? "1024x1024");

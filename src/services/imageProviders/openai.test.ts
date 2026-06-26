@@ -16,7 +16,9 @@ describe("OpenAiImageProvider", () => {
     const provider = new OpenAiImageProvider();
     const result = await provider.generate({ prompt: "a cat" }, { apiKey: "key" });
 
-    expect(fetchMock.mock.calls[0][0]).toBe("https://api.openai.com/v1/images/generations");
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.openai.com/v1/images/generations");
+    expect(JSON.parse(options.body).model).toBe("dall-e-2");
     expect(result.url).toBe("https://example.com/a.png");
   });
 
@@ -36,6 +38,7 @@ describe("OpenAiImageProvider", () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.openai.com/v1/images/edits");
     expect(options.body).toBeInstanceOf(FormData);
+    expect(options.body.get("model")).toBe("dall-e-2");
     expect(options.body.get("prompt")).toBe("make it sunset");
     expect(result.url).toBe("https://example.com/edited.png");
   });
