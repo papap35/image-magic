@@ -309,11 +309,17 @@
   request/response 格式，所以只需要換網域，不用改任何請求內容。
 - 換到新 router 後發現 `hf-inference` provider 實際服務的模型清單比舊版
   Inference API 小很多，原本的 `DEFAULT_MODEL`
-  （`stabilityai/stable-diffusion-xl-base-1.0`）已不在清單內，改回
-  `Model not supported by provider hf-inference`；改用確定受支援的
-  `black-forest-labs/FLUX.1-schnell` 作為純文字生圖預設模型。img2img 用的
-  `timbrooks/instruct-pix2pix` 是否仍受 `hf-inference` 支援尚未確認，本次
-  暫不變動，後續若使用者回報同樣錯誤再處理。
+  （`stabilityai/stable-diffusion-xl-base-1.0`）已不在清單內，回應
+  `Model not supported by provider hf-inference`。先嘗試改用
+  `black-forest-labs/FLUX.1-schnell`，仍是同樣錯誤；直接下載
+  `@huggingface/inference` SDK 原始碼比對後確認 FLUX 系列模型在 Hugging
+  Face 上是透過 `fal-ai` provider 的非同步佇列 API（送出任務 → 輪詢狀態 →
+  取得結果）運作，跟 `hf-inference` 的同步請求/回應協議完全不同，本來就不
+  會透過我們現有的程式碼跑起來。最終改用 `@huggingface/inference` SDK
+  原始碼註解中明確標示為 hf-inference 文字生圖預設模型的
+  `stabilityai/stable-diffusion-2`。img2img 用的 `timbrooks/instruct-pix2pix`
+  是否仍受 `hf-inference` 支援尚未確認，本次暫不變動，後續若使用者回報同樣
+  錯誤再處理。
 
 ---
 

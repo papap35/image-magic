@@ -6,8 +6,12 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider, Reference
 const INFERENCE_BASE_URL = "https://router.huggingface.co/hf-inference/models";
 
 // stable-diffusion-xl-base-1.0 is no longer in the curated model set the
-// hf-inference provider serves under the new router; FLUX.1-schnell is.
-const DEFAULT_MODEL = "black-forest-labs/FLUX.1-schnell";
+// hf-inference provider serves under the new router. FLUX models don't work
+// either — they're only served via fal-ai's async queue API (submit/poll/
+// fetch), a different protocol than hf-inference's synchronous request/
+// response. stable-diffusion-2 is the model the official @huggingface/
+// inference SDK documents as its hf-inference text-to-image default.
+const DEFAULT_MODEL = "stabilityai/stable-diffusion-2";
 // instruct-pix2pix is an instruction-guided image-editing model — it takes a
 // source image plus a text instruction, which matches the img2img contract
 // (prompt steering an existing image) better than a generic SDXL img2img
