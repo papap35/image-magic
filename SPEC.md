@@ -186,6 +186,39 @@
   （`resultUrl`）或錯誤訊息（`error`）。
 - `src/app/app/page.tsx` 補上導向「產生圖片／圖庫／風格指令」三個頁面的連結。
 
+#### 6c. 圖生圖（上傳參考圖片） `[x]`
+**背景**：使用者希望上傳一張參考圖片，讓出圖結果以這張圖為基礎調整，而非單純
+存成附件；需同時支援 `openai` 與 `huggingface` 兩個 provider。
+**實作備註**：
+- `services/imageProviders/types.ts`：`GenerateImageParams` 新增選填的
+  `referenceImage?: { base64, mimeType }`；有提供時走圖生圖路徑，沒有則維持
+  原本的純文字出圖。
+- `openai`：有參考圖片時改打 `/v1/images/edits`（multipart/form-data，帶
+  `image`/`prompt`/`size`/`n`），沒有則維持原本的 `/v1/images/generations`。
+- `huggingface`：有參考圖片時改打 `timbrooks/instruct-pix2pix`（instruction-
+  guided 圖片編輯模型，prompt 當作編輯指令），請求改為
+  `{ inputs: "data:<mimeType>;base64,<...>", parameters: { prompt } }`；沒有
+  參考圖片則維持原本打 `stabilityai/stable-diffusion-xl-base-1.0` 的純文字
+  出圖路徑。
+- `POST /api/generation-jobs`：body 新增選填的 `referenceImage`
+  （`{ base64, mimeType }`），驗證 `mimeType` 必須是 `image/*` 開頭，通過後
+  原樣傳給 `createAndRunGenerationJob` → provider 的 `generate()`。
+- `src/app/app/generate/page.tsx`：新增「參考圖片」檔案上傳欄位（選填），用
+  `FileReader.readAsDataURL` 在前端轉成 base64 並預覽，送出時一併帶入
+  `POST /api/generation-jobs` 的 body；提供「移除參考圖片」按鈕清空選擇。
+- 已測試：`services/imageProviders/openai.test.ts`、
+  `services/imageProviders/huggingface.test.ts`（mock `fetch`，驗證有/無參考
+  圖片時打到正確的 endpoint 與 request body 結構）。
+
+#### 6d. `/app/*` 持久導覽列 `[x]`
+**背景**：先前每個 `/app/*` 頁面各自獨立，沒有固定導覽列可在頁面間切換。
+**實作備註**：
+- `src/app/app/layout.tsx`：Next.js App Router nested layout，包住所有
+  `/app/*` 路由，渲染一份固定的 `<nav>`（首頁／產生圖片／圖庫／風格指令），
+  取代原本只存在於首頁、且每頁要各自加上的做法。
+- `src/app/globals.css`：新增 `.app-nav-persistent` 樣式（`position: sticky;
+  top: 0`，置中對齊 `main` 的 `max-width: 720px`），讓導覽列固定在頁面最上方。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
