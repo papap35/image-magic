@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { describeError } from "@/lib/errors";
 import { toUsageDateKey } from "@/lib/generationJob";
 import { getImageProvider } from "@/services/imageProviders";
 import { uploadGeneratedImageToDrive } from "@/services/images";
@@ -62,10 +63,9 @@ export async function createAndRunGenerationJob(
     try {
       image = await uploadGeneratedImageToDrive(userId, job.id, result.url);
     } catch (driveErr) {
-      const message = driveErr instanceof Error ? driveErr.message : "Unknown error";
       return prisma.generationJob.update({
         where: { id: job.id },
-        data: { status: "failed", resultUrl: result.url, error: `Drive upload failed: ${message}` },
+        data: { status: "failed", resultUrl: result.url, error: `Drive upload failed: ${describeError(driveErr)}` },
       });
     }
 
@@ -77,10 +77,9 @@ export async function createAndRunGenerationJob(
       data: { status: "success", resultUrl: result.url },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
     return prisma.generationJob.update({
       where: { id: job.id },
-      data: { status: "failed", error: message },
+      data: { status: "failed", error: describeError(err) },
     });
   }
 }

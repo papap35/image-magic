@@ -269,6 +269,19 @@
   改用帶 fallback 的 CSS 變數（例如 `var(--color-tag-bg, #eef2ff)`），並在
   dark 主題中提供對應深色版本，確保在 dark mode 下仍有足夠對比度。
 
+#### 6g. 完整保留底層錯誤原因（`fetch failed` 等） `[x]`
+**背景**：Node 的 `fetch` 在底層網路失敗（DNS 查不到、TLS 失敗、連線中斷等）
+時，只會拋出訊息固定是 `"fetch failed"` 的 `Error`，真正原因藏在
+`error.cause`（通常是帶 `code`，例如 `ENOTFOUND`/`ECONNRESET` 的系統錯誤）。
+原本 `services/generationJobs.ts` 只取 `err.message` 存進 `job.error`，導致
+使用者在前端只看得到「fetch failed」，看不出實際發生什麼事。
+**實作備註**：
+- `src/lib/errors.ts`：`describeError(err)` 純函式，沿著 `error.cause` 鏈
+  往下走，把每一層的 message（與 `code`，若有）串接起來，沒有 cause 或不是
+  `Error` 時則回退成原本行為；4 個測試 case。
+- `services/generationJobs.ts` 的兩個 catch block（出圖本身失敗、Drive 上傳
+  失敗）都改用 `describeError`，取代原本只取 `err.message` 的寫法。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
