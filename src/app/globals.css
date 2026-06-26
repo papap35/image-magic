@@ -78,6 +78,25 @@ nav.app-nav a:hover {
   text-decoration: none;
 }
 
+/* Persistent nav bar (rendered by /app layout, before <main>) */
+nav.app-nav-persistent {
+  margin-top: 0;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 12px 20px 0;
+  background: var(--color-bg);
+}
+
+nav.app-nav-persistent a {
+  box-shadow: none;
+  padding: 8px 14px;
+}
+
 /* Cards */
 .card {
   background: var(--color-surface);
