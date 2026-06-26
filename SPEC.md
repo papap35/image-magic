@@ -282,6 +282,19 @@
 - `services/generationJobs.ts` 的兩個 catch block（出圖本身失敗、Drive 上傳
   失敗）都改用 `describeError`，取代原本只取 `err.message` 的寫法。
 
+#### 6h. 品牌標誌與 Favicon `[x]`
+**背景**：Header 的 logo 只是一個簡單線條圖示，網站也沒有自訂 favicon。
+**實作備註**：
+- `src/components/Logo.tsx`：把原本單色線條 sparkle 換成圓角方形漸層徽章
+  （`--color-primary` → `--color-accent` 對應的 `#4f46e5` → `#a855f7`
+  漸層）裡放白色四角星圖示，視覺上更像完整品牌標誌，搭配右側漸層文字
+  wordmark 一起放在 Header 左側。
+- `src/app/icon.tsx`、`src/app/apple-icon.tsx`：用 Next.js 的檔案慣例
+  （`icon.tsx`/`apple-icon.tsx` 會自動產生對應的 `<link rel="icon">` 等
+  metadata）搭配 `next/og` 的 `ImageResponse`（Satori，純 JSX + CSS 渲染成
+  PNG），在 build/request 時動態產生 32x32 favicon 與 180x180 Apple touch
+  icon，圖案與 Header logo 一致；不需要額外的圖片處理套件或外部美術檔案。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
