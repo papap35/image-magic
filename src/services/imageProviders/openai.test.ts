@@ -18,8 +18,21 @@ describe("OpenAiImageProvider", () => {
 
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.openai.com/v1/images/generations");
-    expect(JSON.parse(options.body).model).toBe("dall-e-2");
+    expect(JSON.parse(options.body).model).toBe("gpt-image-1");
     expect(result.url).toBe("https://example.com/a.png");
+  });
+
+  it("正常情況：回應只有 b64_json（無 url）時，轉成 data: URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ b64_json: "Zm9v" }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new OpenAiImageProvider();
+    const result = await provider.generate({ prompt: "a cat" }, { apiKey: "key" });
+
+    expect(result.url).toBe("data:image/png;base64,Zm9v");
   });
 
   it("正常情況：有參考圖片時，呼叫 edits endpoint 並以 multipart form 帶入圖片與 prompt", async () => {
@@ -38,7 +51,7 @@ describe("OpenAiImageProvider", () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.openai.com/v1/images/edits");
     expect(options.body).toBeInstanceOf(FormData);
-    expect(options.body.get("model")).toBe("dall-e-2");
+    expect(options.body.get("model")).toBe("gpt-image-1");
     expect(options.body.get("prompt")).toBe("make it sunset");
     expect(result.url).toBe("https://example.com/edited.png");
   });
