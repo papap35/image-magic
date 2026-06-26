@@ -18,7 +18,7 @@ describe("HuggingFaceImageProvider", () => {
     await provider.generate({ prompt: "a cat" }, { apiKey: "key" });
 
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toContain("stabilityai/stable-diffusion-xl-base-1.0");
+    expect(url).toContain("black-forest-labs/FLUX.1-schnell");
     expect(JSON.parse(options.body)).toEqual({ inputs: "a cat" });
   });
 

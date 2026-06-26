@@ -307,6 +307,13 @@
   （`requestTextToImage`）與 img2img（`requestImg2Img`）兩個 fetch 呼叫都改用
   這個新的 base URL；`hf-inference` provider 沿用與舊版 API 完全相同的
   request/response 格式，所以只需要換網域，不用改任何請求內容。
+- 換到新 router 後發現 `hf-inference` provider 實際服務的模型清單比舊版
+  Inference API 小很多，原本的 `DEFAULT_MODEL`
+  （`stabilityai/stable-diffusion-xl-base-1.0`）已不在清單內，改回
+  `Model not supported by provider hf-inference`；改用確定受支援的
+  `black-forest-labs/FLUX.1-schnell` 作為純文字生圖預設模型。img2img 用的
+  `timbrooks/instruct-pix2pix` 是否仍受 `hf-inference` 支援尚未確認，本次
+  暫不變動，後續若使用者回報同樣錯誤再處理。
 
 ---
 

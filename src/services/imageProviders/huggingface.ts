@@ -5,7 +5,9 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider, Reference
 // request/response shape as the old serverless Inference API.
 const INFERENCE_BASE_URL = "https://router.huggingface.co/hf-inference/models";
 
-const DEFAULT_MODEL = "stabilityai/stable-diffusion-xl-base-1.0";
+// stable-diffusion-xl-base-1.0 is no longer in the curated model set the
+// hf-inference provider serves under the new router; FLUX.1-schnell is.
+const DEFAULT_MODEL = "black-forest-labs/FLUX.1-schnell";
 // instruct-pix2pix is an instruction-guided image-editing model — it takes a
 // source image plus a text instruction, which matches the img2img contract
 // (prompt steering an existing image) better than a generic SDXL img2img
