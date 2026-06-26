@@ -230,10 +230,11 @@
 - `generate/page.tsx`：新增 `pageLoading` state，等 presets/jobs/providers/
   savedProviders 四個初始請求都完成（`Promise.all`）才顯示表單，避免表單
   在資料尚未到位時就可互動。
-- 「生成紀錄」改為只顯示最新一筆（`jobs[0]`，API 本來就是 `createdAt desc`
-  排序）的大圖預覽（`.latest-job-image`），不再渲染會無限增長的列表；超過
-  一筆時顯示提示文字導向 `/app/images`（圖庫）查看其餘紀錄，避免兩處重複
-  維護同一份歷史紀錄 UI。
+- 「生成紀錄」改為表格呈現（`GenerationJobsTable`）：狀態、Prompt（預設只顯示
+  兩行，點「展開」/「收合」切換完整內容）、結果（成功顯示縮圖、失敗完整顯示
+  `error` 內容、處理中顯示提示文字）、建立時間四欄，確保最重要的資訊（尤其是
+  錯誤訊息）一定完整呈現，不會被截斷或省略。產生圖片頁與圖庫（`/app/images`）
+  是不同用途的頁面，不互相取代或導流。
 
 ---
 

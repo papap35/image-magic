@@ -379,26 +379,57 @@ export default function GeneratePage() {
         </div>
       </form>
 
-      <h2>最新生成結果</h2>
-      {jobs.length === 0 ? (
-        <p>尚未有任何生成請求。</p>
-      ) : (
-        <div className="card-list-item">
-          <span className={`status-badge ${jobs[0].status}`}>{jobs[0].status}</span>
-          <p>{jobs[0].promptFinal}</p>
-          {jobs[0].status === "success" && jobs[0].resultUrl && (
-            <img className="latest-job-image" src={jobs[0].resultUrl} alt={jobs[0].promptFinal} />
-          )}
-          {jobs[0].status === "failed" && <p role="alert">錯誤：{jobs[0].error}</p>}
-        </div>
-      )}
-      {jobs.length > 1 && (
-        <p className="hint">
-          其餘的生成紀錄請到<a href="/app/images">圖庫</a>查看。
-        </p>
-      )}
+      <h2>生成紀錄</h2>
+      {jobs.length === 0 ? <p>尚未有任何生成請求。</p> : <GenerationJobsTable jobs={jobs} />}
       </>
       )}
     </main>
+  );
+}
+
+function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <table className="jobs-table">
+      <thead>
+        <tr>
+          <th>狀態</th>
+          <th>Prompt</th>
+          <th>結果</th>
+          <th>時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        {jobs.map((job) => {
+          const expanded = expandedId === job.id;
+          return (
+            <tr key={job.id}>
+              <td>
+                <span className={`status-badge ${job.status}`}>{job.status}</span>
+              </td>
+              <td>
+                <p className={expanded ? "prompt-cell expanded" : "prompt-cell"}>{job.promptFinal}</p>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setExpandedId(expanded ? null : job.id)}
+                >
+                  {expanded ? "收合" : "展開"}
+                </button>
+              </td>
+              <td>
+                {job.status === "success" && job.resultUrl && (
+                  <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                )}
+                {job.status === "failed" && <p role="alert">錯誤：{job.error}</p>}
+                {job.status === "pending" && <span className="hint">處理中...</span>}
+              </td>
+              <td className="hint">{new Date(job.createdAt).toLocaleString()}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
