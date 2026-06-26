@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { buildFinalPrompt, type PromptFieldInput } from "@/lib/prompt";
 
 interface StylePreset {
@@ -52,6 +52,9 @@ export default function GeneratePage() {
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [referenceImage, setReferenceImage] = useState<{ base64: string; mimeType: string } | null>(null);
+  const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
 
   async function loadPresets() {
     const res = await fetch("/api/style-presets");
@@ -122,6 +125,28 @@ export default function GeneratePage() {
     setExtraFields((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function handleReferenceImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setReferenceImage(null);
+      setReferenceImagePreview(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const [, base64] = dataUrl.split(",");
+      setReferenceImage({ base64, mimeType: file.type });
+      setReferenceImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeReferenceImage() {
+    setReferenceImage(null);
+    setReferenceImagePreview(null);
+  }
+
   const selectedProvider = providers.find((p) => p.id === providerId);
   const hasSavedKey = savedProviders.includes(providerId);
 
@@ -175,6 +200,7 @@ export default function GeneratePage() {
           promptFinal: finalPrompt,
           enhancePrompt,
           password: enhancePrompt ? enhancePassword : undefined,
+          referenceImage: referenceImage ?? undefined,
         }),
       });
       const data = await res.json();
@@ -257,6 +283,29 @@ export default function GeneratePage() {
               />
             </div>
           )}
+        </div>
+
+        <div className="card">
+          <div className="field">
+            <label htmlFor="reference-image-input">參考圖片（選填，將用於圖生圖）</label>
+            <input
+              id="reference-image-input"
+              type="file"
+              accept="image/*"
+              onChange={handleReferenceImageChange}
+            />
+            <p className="hint">上傳後，生成結果會以這張圖片為基礎，依 prompt 進行調整。</p>
+            {referenceImagePreview && (
+              <div>
+                <img className="thumb" src={referenceImagePreview} alt="參考圖片預覽" width={160} />
+                <div className="button-row">
+                  <button type="button" className="secondary" onClick={removeReferenceImage}>
+                    移除參考圖片
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="card">

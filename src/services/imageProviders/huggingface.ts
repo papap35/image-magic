@@ -1,6 +1,11 @@
-import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./types";
+import type { GenerateImageParams, GenerateImageResult, ImageProvider, ReferenceImage } from "./types";
 
 const DEFAULT_MODEL = "stabilityai/stable-diffusion-xl-base-1.0";
+// instruct-pix2pix is an instruction-guided image-editing model — it takes a
+// source image plus a text instruction, which matches the img2img contract
+// (prompt steering an existing image) better than a generic SDXL img2img
+// pipeline would.
+const DEFAULT_IMG2IMG_MODEL = "timbrooks/instruct-pix2pix";
 
 /**
  * Hugging Face's Inference API returns the generated image bytes directly
@@ -18,14 +23,9 @@ export class HuggingFaceImageProvider implements ImageProvider {
       throw new Error("Missing Hugging Face API key");
     }
 
-    const response = await fetch(`https://api-inference.huggingface.co/models/${DEFAULT_MODEL}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: params.prompt }),
-    });
+    const response = params.referenceImage
+      ? await this.requestImg2Img(params.prompt, params.referenceImage, apiKey)
+      : await this.requestTextToImage(params.prompt, apiKey);
 
     if (!response.ok) {
       const raw = await response.json().catch(() => null);
@@ -37,5 +37,30 @@ export class HuggingFaceImageProvider implements ImageProvider {
     const url = `data:${contentType};base64,${bytes.toString("base64")}`;
 
     return { url, raw: { contentType } };
+  }
+
+  private requestTextToImage(prompt: string, apiKey: string) {
+    return fetch(`https://api-inference.huggingface.co/models/${DEFAULT_MODEL}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ inputs: prompt }),
+    });
+  }
+
+  private requestImg2Img(prompt: string, referenceImage: ReferenceImage, apiKey: string) {
+    return fetch(`https://api-inference.huggingface.co/models/${DEFAULT_IMG2IMG_MODEL}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inputs: `data:${referenceImage.mimeType};base64,${referenceImage.base64}`,
+        parameters: { prompt },
+      }),
+    });
   }
 }

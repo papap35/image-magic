@@ -9,6 +9,7 @@ export interface CreateGenerationJobInput {
   provider: string;
   promptFinal: string;
   params?: Record<string, unknown>;
+  referenceImage?: { base64: string; mimeType: string };
 }
 
 export type ProviderCredentials = Record<string, string>;
@@ -51,7 +52,10 @@ export async function createAndRunGenerationJob(
   }
 
   try {
-    const result = await provider.generate({ prompt: input.promptFinal }, credentials);
+    const result = await provider.generate(
+      { prompt: input.promptFinal, referenceImage: input.referenceImage },
+      credentials,
+    );
     await incrementUsage(userId, input.provider);
 
     let image;

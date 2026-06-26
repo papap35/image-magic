@@ -61,7 +61,26 @@ export async function POST(request: Request) {
     ? await enhancePromptWithClaude(body.promptFinal, enhancementAuth.anthropicApiKey)
     : body.promptFinal;
 
-  const job = await createAndRunGenerationJob(userId, { ...body, promptFinal }, credentials.credentials);
+  let referenceImage: { base64: string; mimeType: string } | undefined;
+  if (body.referenceImage) {
+    if (
+      typeof body.referenceImage.base64 !== "string" ||
+      typeof body.referenceImage.mimeType !== "string" ||
+      !body.referenceImage.mimeType.startsWith("image/")
+    ) {
+      return NextResponse.json(
+        { error: { code: "invalid_input", message: "referenceImage must include base64 and an image mimeType" } },
+        { status: 400 },
+      );
+    }
+    referenceImage = { base64: body.referenceImage.base64, mimeType: body.referenceImage.mimeType };
+  }
+
+  const job = await createAndRunGenerationJob(
+    userId,
+    { ...body, promptFinal, referenceImage },
+    credentials.credentials,
+  );
   const status = job.status === "failed" ? 502 : 201;
   return NextResponse.json({ job }, { status });
 }
