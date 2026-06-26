@@ -64,8 +64,8 @@ GitHub Actions（`.github/workflows/ci.yml`）兩個 job：
 | `VERCEL_TOKEN` | Vercel 帳號的 Personal Access Token |
 | `VERCEL_ORG_ID` | 在 Vercel 專案目錄執行 `vercel link` 後，`.vercel/project.json` 裡的 `orgId` |
 | `VERCEL_PROJECT_ID` | 同上的 `projectId` |
-| `PROD_DATABASE_URL` | 生產環境 PostgreSQL 連線字串，**資料庫需啟用 `pgvector` extension**（例如 Neon、Supabase 或自架 `pgvector/pgvector` 都支援）。若資料庫前面有 PgBouncer/連線池（Supabase 的 Connection Pooler、Neon 的 pooled endpoint），記得加上 `?pgbouncer=true`，否則 serverless 環境下會出現 `prepared statement "sX" already exists`（PostgresError 42P05） |
-| `PROD_DIRECT_DATABASE_URL` | 同一個資料庫的**直連**字串（不走 pooler，通常是另一個 port，例如 Supabase 是 5432 而 pooler 是 6543），只給 `prisma migrate deploy` 用 |
+| `PROD_DATABASE_URL` | 生產環境 PostgreSQL 連線字串，**資料庫需啟用 `pgvector` extension**（例如 Neon、Supabase 或自架 `pgvector/pgvector` 都支援）。若資料庫前面有 PgBouncer/連線池（Supabase 的 Connection Pooler、Neon 的 pooled endpoint），記得加上 `?pgbouncer=true`，否則 serverless 環境下會出現 `prepared statement "sX" already exists`（PostgresError 42P05）。Supabase 用 **Transaction pooler**（pooler host，port 6543） |
+| `PROD_DIRECT_DATABASE_URL` | 給 `prisma migrate deploy` 用，需要支援 session 層級的 prepared statement，**不要用真正的直連 host**（Supabase 直連 host 預設只有 IPv6，GitHub Actions/Vercel 是 IPv4-only 連不上）。Supabase 請用同一個 pooler host 的 **Session pooler**（同樣是 `*.pooler.supabase.com`，但 port 5432），兩種 pooler 模式都支援 IPv4 |
 
 **Vercel 專案的環境變數**（Vercel Dashboard → Project → Settings →
 Environment Variables，設定在 `Production` 環境）：
