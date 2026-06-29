@@ -9,8 +9,14 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./
 // unlike OpenAI/Hugging Face which split these into separate
 // endpoints/models.
 export const DEFAULT_MODEL = "gemini-2.5-flash-image";
-export const MODEL_OPTIONS = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
+export const MODEL_OPTIONS = ["gemini-2.5-flash-image"];
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+
+// Ids that used to be valid but Google has since retired. Users who saved
+// one of these as their model override before it was retired would
+// otherwise be stuck with a permanently broken provider until they noticed
+// and manually changed it, so we fall back to DEFAULT_MODEL instead.
+const RETIRED_MODELS = new Set(["gemini-2.0-flash-preview-image-generation"]);
 
 interface GeminiPart {
   text?: string;
@@ -40,7 +46,8 @@ export class GeminiImageProvider implements ImageProvider {
     if (!apiKey) {
       throw new Error("Missing Gemini API key");
     }
-    const model = credentials.model || DEFAULT_MODEL;
+    const requestedModel = credentials.model || DEFAULT_MODEL;
+    const model = RETIRED_MODELS.has(requestedModel) ? DEFAULT_MODEL : requestedModel;
 
     const parts: GeminiPart[] = [{ text: params.prompt }];
     if (params.referenceImage) {

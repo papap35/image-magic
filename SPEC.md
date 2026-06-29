@@ -408,6 +408,21 @@ version v1beta, or is not supported for generateContent`——該 preview 模型
   不在清單內（使用者自訂過）就自動切到「自訂...」並帶入該值，沒存過模型則
   顯示 provider 的預設模型。
 
+#### 6n. 移除已停用的 Gemini 模型選項並自動 fallback `[x]`
+**背景**：6m 上線時 `gemini.ts` 的 `MODEL_OPTIONS` 仍把已被 Google 下架的
+`gemini-2.0-flash-preview-image-generation` 列為可選項目；使用者選到/存到這個
+舊值之後，每次生成都會收到 `models/... is not found for API version v1beta`
+錯誤，而且即使後來修正了 `DEFAULT_MODEL`，已經存在資料庫裡的舊覆寫值也不會
+自動更新，導致同一個錯誤反覆出現。
+**實作備註**：
+- `src/services/imageProviders/gemini.ts`：`MODEL_OPTIONS` 移除
+  `gemini-2.0-flash-preview-image-generation`，下拉選單只剩
+  `gemini-2.5-flash-image`。
+- 新增 `RETIRED_MODELS` 集合；`generate()` 在套用 `credentials.model` 之前先
+  檢查是否為已知停用的模型 id，若是則自動改用 `DEFAULT_MODEL`，讓使用者過去
+  存到舊值的覆寫設定不需要手動清除就能自動修正，往後其他模型被下架時也可以
+  用同樣方式加進這個集合。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
