@@ -75,12 +75,28 @@ describe("GeminiImageProvider", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const provider = new GeminiImageProvider();
+    await provider.generate({ prompt: "a cat" }, { apiKey: "key", model: "gemini-custom-model" });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("gemini-custom-model:generateContent");
+  });
+
+  it("正常情況：credentials 帶有已停用的舊模型時，自動改用 DEFAULT_MODEL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: "Zm9v" } }] } }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new GeminiImageProvider();
     await provider.generate(
       { prompt: "a cat" },
       { apiKey: "key", model: "gemini-2.0-flash-preview-image-generation" },
     );
 
     const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("gemini-2.0-flash-preview-image-generation:generateContent");
+    expect(url).toContain("gemini-2.5-flash-image:generateContent");
   });
 });
