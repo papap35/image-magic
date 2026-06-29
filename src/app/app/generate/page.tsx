@@ -347,13 +347,22 @@ export default function GeneratePage() {
                 </div>
               ) : (
                 <div className="field">
-                  <label htmlFor="provider-api-key">你的 {selectedProvider.label} API Key</label>
+                  <label htmlFor="provider-api-key">
+                    {selectedProvider.id === "comfyui" ? "你的 ComfyUI 伺服器網址" : `你的 ${selectedProvider.label} API Key`}
+                  </label>
+                  {selectedProvider.id === "comfyui" && (
+                    <p className="hint">
+                      ComfyUI 沒有 API Key，這裡請填伺服器網址（例如
+                      http://192.168.1.50:8188）。本網站的伺服器要能連到這個網址才能生成圖片
+                      ——同一台機器、同一個區域網路，或是透過 VPN／Tunnel 對外開放都可以。
+                    </p>
+                  )}
                   <input
                     id="provider-api-key"
-                    type="password"
+                    type={selectedProvider.id === "comfyui" ? "text" : "password"}
                     value={byokKeyInput}
                     onChange={(e) => setByokKeyInput(e.target.value)}
-                    placeholder="輸入你自己的 API Key"
+                    placeholder={selectedProvider.id === "comfyui" ? "http://192.168.1.50:8188" : "輸入你自己的 API Key"}
                   />
                   <div className="button-row">
                     <button type="button" onClick={handleSaveKey} disabled={savingKey}>
@@ -382,6 +391,12 @@ export default function GeneratePage() {
           <div className="card">
             <div className="field">
               <label htmlFor="model-select">使用的模型</label>
+              {selectedProvider.id === "comfyui" && (
+                <p className="hint">
+                  這裡填的是 checkpoint 檔名，必須跟你 ComfyUI `models/checkpoints`
+                  資料夾裡的檔名完全一致（例如 flux1-dev.safetensors）。
+                </p>
+              )}
               <select id="model-select" value={modelSelect} onChange={(e) => setModelSelect(e.target.value)}>
                 {selectedProvider.modelOptions.map((model) => (
                   <option key={model} value={model}>
