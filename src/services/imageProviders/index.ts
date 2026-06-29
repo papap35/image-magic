@@ -3,12 +3,14 @@ import { HuggingFaceImageProvider, DEFAULT_MODEL as HF_DEFAULT_MODEL, MODEL_OPTI
 import { OpenAiImageProvider, DEFAULT_MODEL as OPENAI_DEFAULT_MODEL, MODEL_OPTIONS as OPENAI_MODEL_OPTIONS } from "./openai";
 import { GeminiImageProvider, DEFAULT_MODEL as GEMINI_DEFAULT_MODEL, MODEL_OPTIONS as GEMINI_MODEL_OPTIONS } from "./gemini";
 import { FalImageProvider, DEFAULT_MODEL as FAL_DEFAULT_MODEL, MODEL_OPTIONS as FAL_MODEL_OPTIONS } from "./fal";
+import { ComfyUiImageProvider, DEFAULT_MODEL as COMFYUI_DEFAULT_MODEL, MODEL_OPTIONS as COMFYUI_MODEL_OPTIONS } from "./comfyui";
 
 const providers: Record<string, ImageProvider> = {
   openai: new OpenAiImageProvider(),
   huggingface: new HuggingFaceImageProvider(),
   gemini: new GeminiImageProvider(),
   fal: new FalImageProvider(),
+  comfyui: new ComfyUiImageProvider(),
 };
 
 export function getImageProvider(name: string): ImageProvider | null {
@@ -49,6 +51,13 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     authMode: "byok",
     defaultModel: FAL_DEFAULT_MODEL,
     modelOptions: FAL_MODEL_OPTIONS,
+  },
+  {
+    id: "comfyui",
+    label: "ComfyUI（本機/自架伺服器）",
+    authMode: "byok",
+    defaultModel: COMFYUI_DEFAULT_MODEL,
+    modelOptions: COMFYUI_MODEL_OPTIONS,
   },
 ];
 

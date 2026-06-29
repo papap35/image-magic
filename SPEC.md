@@ -555,6 +555,47 @@ metadata 拿到 `fileId`，再用 `PATCH .../upload/drive/v3/files/{fileId}
 
 ---
 
+#### 6t. 新增 ComfyUI（本機/自架）圖片生成 provider `[x]`
+**背景**：雲端 provider（OpenAI／fal）按張計費，使用者想評估改用地端模型省
+成本。LM Studio 只支援文字／多模態理解模型，不支援 text-to-image 的擴散模
+型，不適用。評估 Automatic1111 與 ComfyUI 後，使用者選擇直接做 ComfyUI（彈
+性高、新模型如 FLUX 支援快、效能優化較好）。ComfyUI 不是雲端 API，沒有「API
+Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自己 ComfyUI 伺服器
+的網址（例如 `http://192.168.1.50:8188`）——重要前提：本網站的伺服器必須能
+連到這個網址才能生成圖片（同機、同網段，或透過 VPN／Tunnel 對外開放），這
+點已在前端加上明顯提示文字。
+**實作備註**：
+- 新增 `src/services/imageProviders/comfyui.ts`：`ComfyUiImageProvider
+  implements ImageProvider`。`credentials.apiKey` 當作 base URL 使用（去掉
+  結尾斜線）；`credentials.model` 對應到 ComfyUI 工作流裡
+  `CheckpointLoaderSimple` 節點的 `ckpt_name`，必須跟使用者
+  `models/checkpoints` 資料夾裡的檔名完全一致，`MODEL_OPTIONS` 只是給下拉選
+  單的幾個常見範例（`sd_xl_base_1.0.safetensors`／`flux1-dev.safetensors`／
+  `sd_xl_turbo_1.0.safetensors`），自訂模型欄位可以填任何檔名。
+- 流程：文字生圖直接組一個最小的 API 格式工作流 JSON（CheckpointLoader→
+  EmptyLatentImage→兩個 CLIPTextEncode→KSampler→VAEDecode→SaveImage），圖生
+  圖則先用 `FormData` POST 到 `/upload/image` 上傳參考圖片，拿到檔名後用
+  `LoadImage`＋`VAEEncode` 節點取代 `EmptyLatentImage`、`denoise` 設為
+  `0.75`。POST 工作流到 `/prompt` 拿到 `prompt_id`，輪詢
+  `/history/{promptId}`（間隔 2 秒，最多 60 次／2 分鐘逾時）直到拿到輸出圖
+  片的 `filename`/`subfolder`/`type`，再 GET `/view?...` 下載實際圖片位元
+  組，轉成 `data:` base64 URL 回傳（與 OpenAI provider 的 `b64_json` 分支一
+  致，後續 `uploadGeneratedImageToDrive` 的 `fetch(resultUrl)` 已驗證能處理
+  這種格式）。
+- `src/services/imageProviders/index.ts`：註冊 `comfyui: new
+  ComfyUiImageProvider()`，`PROVIDER_DEFINITIONS` 新增 `{ id: "comfyui",
+  label: "ComfyUI（本機/自架伺服器）", authMode: "byok", defaultModel:
+  COMFYUI_DEFAULT_MODEL, modelOptions: COMFYUI_MODEL_OPTIONS }`。
+- `src/app/app/generate/page.tsx`：當選中的 provider 是 `comfyui` 時，BYOK
+  欄位的 label／placeholder／輸入框型態（改成 `text` 而非 `password`，因為
+  是網址不是密鑰）都換成對應文字，並加上提示說明伺服器網路可達性的前提；模
+  型欄位也加上提示說明這裡填的是 checkpoint 檔名。
+- 新增 `src/services/imageProviders/comfyui.test.ts`：涵蓋文字生圖（驗證工
+  作流節點內容）、圖生圖（驗證先上傳圖片、`LoadImage` 節點帶入上傳後的檔
+  名）、缺少伺服器網址、提交工作流失敗、自訂模型覆寫，共 5 個測試 case。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`
