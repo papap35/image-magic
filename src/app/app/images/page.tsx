@@ -6,7 +6,7 @@ import { Spinner } from "@/components/Spinner";
 interface ImageItem {
   id: string;
   title: string | null;
-  thumbnailUrl: string | null;
+  driveFileId: string | null;
 }
 
 interface Tag {
@@ -165,8 +165,8 @@ export default function ImagesPage() {
           {images.map((image) => (
             <li className="card-list-item" key={image.id}>
               <strong>{image.title ?? "（未命名）"}</strong>
-              {image.thumbnailUrl && (
-                <img className="thumb" src={image.thumbnailUrl} alt={image.title ?? ""} width={160} />
+              {image.driveFileId && (
+                <img className="thumb" src={`/api/images/${image.id}/content`} alt={image.title ?? ""} width={160} />
               )}
               <ImageTagEditor imageId={image.id} allTags={allTags} />
             </li>

@@ -596,6 +596,41 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 
 ---
 
+#### 6u. 修正圖庫看不到任何已生成圖片 `[x]`
+**背景**：使用者回報圖庫（`/app/app/images`）完全沒有顯示任何已生成的圖
+片。追查後發現兩個獨立問題：
+1. 歷史資料缺口：`createAndRunGenerationJob` 只有在
+   `uploadGeneratedImageToDrive` 成功時才會建立 `Image` row；6s 修正前的
+   multipart 上傳 bug 會讓「所有」上傳到 Drive 的請求失敗，所以在那之前產
+   生的圖片從來沒有對應的 `Image` row。這屬於歷史資料缺口，無法在不重新
+   下載原始 provider 暫存圖片網址的情況下回補（且那些網址多半早已失效），
+   本次修正不處理回補，僅確保 6s 修正之後的新生成圖片能正常顯示。
+2. 縮圖一直是空的：`Image.thumbnailUrl` 欄位存在於 schema，但
+   `uploadGeneratedImageToDrive` 從未寫入過這個欄位，所以即使圖片成功建
+   立，縮圖永遠是 `null`，前端的 `{image.thumbnailUrl && <img .../>}` 永遠
+   不會渲染圖片。
+**實作備註**：
+- 評估過直接用 Drive 回傳的 `thumbnailLink` 當圖片網址，但使用者上傳的圖
+  片在自己私有的 Drive 裡，`thumbnailLink` 通常只有在瀏覽器本身有登入同一
+  個 Google 帳號的 session 時才能正確載入，不夠可靠。改用後端代理：新增
+  `downloadDriveFile(accessToken, fileId)`（`src/services/googleDrive.ts`），
+  以 `GET /drive/v3/files/{fileId}?alt=media` 搭配使用者自己的 access token
+  下載原始圖片位元組與 `content-type`。
+- `src/services/images.ts` 新增 `getImageContent(userId, id)`：先用
+  `findFirst({ id, userId })` 確認所有權與 `driveFileId` 存在，再用使用者
+  自己的 refresh token 換新 access token 後呼叫 `downloadDriveFile`。
+- 新增 `GET /api/images/:id/content`（`src/app/api/images/[id]/content/route.ts`），
+  驗證登入後回傳圖片位元組與正確的 `Content-Type`（`Cache-Control:
+  private, max-age=3600`），找不到回 404，Drive 端錯誤回 502。
+- 前端 `src/app/app/images/page.tsx`：`ImageItem` 改用 `driveFileId`
+  （而非從未被寫入的 `thumbnailUrl`）判斷是否顯示縮圖，`<img>` 的 `src`
+  改成 `/api/images/{id}/content`，一律透過後端代理載入，不再依賴 Drive
+  的公開縮圖連結。
+- `src/services/googleDrive.test.ts` 新增 `downloadDriveFile` 的成功／失敗
+  測試 case（共 2 個）。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`

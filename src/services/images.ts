@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { buildGeneratedImageFileName } from "@/lib/driveUpload";
 import { normalizeClearableText } from "@/lib/image";
 import { decryptToken } from "@/lib/tokenCrypto";
-import { ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
+import { downloadDriveFile, ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
 import { addTagToImage } from "@/services/tags";
 
 /**
@@ -41,6 +41,26 @@ export async function uploadGeneratedImageToDrive(userId: string, jobId: string,
       driveViewUrl: uploaded.viewUrl,
     },
   });
+}
+
+/**
+ * Fetch an image's raw bytes from the user's own Drive, on the user's
+ * behalf, so the frontend can render it without needing its own Google
+ * session (Drive files uploaded by this app are private to the user).
+ * Returns null if the image doesn't exist (or isn't owned by this user) or
+ * has no linked Drive file yet.
+ */
+export async function getImageContent(userId: string, id: string) {
+  const image = await prisma.image.findFirst({ where: { id, userId } });
+  if (!image?.driveFileId) {
+    return null;
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user?.driveRefreshToken) {
+    throw new Error("User has not granted Drive access (missing refresh token)");
+  }
+  const accessToken = await refreshAccessToken(decryptToken(user.driveRefreshToken));
+  return downloadDriveFile(accessToken, image.driveFileId);
 }
 
 export function listImages(userId: string) {
