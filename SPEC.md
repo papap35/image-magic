@@ -321,6 +321,22 @@
   是否仍受 `hf-inference` 支援尚未確認，本次暫不變動，後續若使用者回報同樣
   錯誤再處理。
 
+#### 6j. 生成中進度提示與生成紀錄分頁 `[x]`
+**背景**：出圖請求是單一個會 block 到完成才回應的 fetch，使用者在等待
+期間畫面只顯示靜態的「生成中...」文字，容易誤以為卡住沒有反應；另外生成
+紀錄全部一次顯示，筆數變多後不好瀏覽。
+**實作備註**：
+- `src/app/app/generate/page.tsx`：新增 `elapsedSeconds` state，
+  `submitting` 為 true 時用 `setInterval` 每秒 +1，按鈕文字改成「生成中...
+  已等待 N 秒」，並在按鈕下方加提示文字「圖片生成通常需要數十秒，請耐心
+  等候，畫面不會卡住」；目前出圖流程本身沒有中間進度可回報，這個改動只解決
+  「看起來卡住」的體感問題，不是真的進度條。
+- `GenerationJobsTable` 元件新增 client-side 分頁：`pageSize`（5/10/20/50 筆
+  可選，下拉選單）與 `page` state，依目前頁數從完整 `jobs` 陣列 `slice`
+  出當頁資料；頁碼按鈕用 `Array.from({ length: pageCount })` 產生，點擊切換
+  `page`，目前頁碼套用 `active` class 標示。沒有改動後端 API（`GET
+  /api/generation-jobs` 本來就回傳全部紀錄），純前端切資料。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
