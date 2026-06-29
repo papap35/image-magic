@@ -1,11 +1,14 @@
 import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./types";
 
-// gemini-2.0-flash-preview-image-generation is Google's image-output-capable
-// Gemini model, available on the Gemini API free tier. It handles both
-// text-to-image and image+text-to-image (img2img) through the same
-// generateContent endpoint, unlike OpenAI/Hugging Face which split these
-// into separate endpoints/models.
-const DEFAULT_MODEL = "gemini-2.0-flash-preview-image-generation";
+// gemini-2.5-flash-image ("Nano Banana") is Google's current image-output
+// model, available on the Gemini API free tier (10 RPM / 250 RPD as of
+// 2026-06). The previously used gemini-2.0-flash-preview-image-generation
+// id has been retired and returns "is not found for API version v1beta, or
+// is not supported for generateContent". It handles both text-to-image and
+// image+text-to-image (img2img) through the same generateContent endpoint,
+// unlike OpenAI/Hugging Face which split these into separate
+// endpoints/models.
+const DEFAULT_MODEL = "gemini-2.5-flash-image";
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 interface GeminiPart {
