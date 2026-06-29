@@ -11,7 +11,8 @@ const INFERENCE_BASE_URL = "https://router.huggingface.co/hf-inference/models";
 // fetch), a different protocol than hf-inference's synchronous request/
 // response. stable-diffusion-2 is the model the official @huggingface/
 // inference SDK documents as its hf-inference text-to-image default.
-const DEFAULT_MODEL = "stabilityai/stable-diffusion-2";
+export const DEFAULT_MODEL = "stabilityai/stable-diffusion-2";
+export const MODEL_OPTIONS = ["stabilityai/stable-diffusion-2", "stabilityai/stable-diffusion-2-1"];
 // instruct-pix2pix is an instruction-guided image-editing model — it takes a
 // source image plus a text instruction, which matches the img2img contract
 // (prompt steering an existing image) better than a generic SDXL img2img
@@ -34,9 +35,10 @@ export class HuggingFaceImageProvider implements ImageProvider {
       throw new Error("Missing Hugging Face API key");
     }
 
+    const model = credentials.model || DEFAULT_MODEL;
     const response = params.referenceImage
       ? await this.requestImg2Img(params.prompt, params.referenceImage, apiKey)
-      : await this.requestTextToImage(params.prompt, apiKey);
+      : await this.requestTextToImage(params.prompt, apiKey, model);
 
     if (!response.ok) {
       const raw = await response.json().catch(() => null);
@@ -50,8 +52,8 @@ export class HuggingFaceImageProvider implements ImageProvider {
     return { url, raw: { contentType } };
   }
 
-  private requestTextToImage(prompt: string, apiKey: string) {
-    return fetch(`${INFERENCE_BASE_URL}/${DEFAULT_MODEL}`, {
+  private requestTextToImage(prompt: string, apiKey: string, model: string) {
+    return fetch(`${INFERENCE_BASE_URL}/${model}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

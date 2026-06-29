@@ -1,5 +1,5 @@
 import { PROVIDER_DEFINITIONS } from "@/services/imageProviders";
-import { getUserProviderKey } from "@/services/providerKeys";
+import { getUserProviderKey, getUserProviderModel } from "@/services/providerKeys";
 
 export interface CredentialError {
   ok: false;
@@ -32,5 +32,6 @@ export async function resolveProviderCredentials(
       message: `No saved API key for provider "${provider}" — save one via /api/provider-keys first`,
     };
   }
-  return { ok: true, credentials: { apiKey } };
+  const model = await getUserProviderModel(userId, provider);
+  return { ok: true, credentials: model ? { apiKey, model } : { apiKey } };
 }

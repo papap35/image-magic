@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/session";
 import { PROVIDER_DEFINITIONS } from "@/services/imageProviders";
-import { listUserProviderKeyNames, saveUserProviderKey } from "@/services/providerKeys";
+import { listUserProviderKeyNames, listUserProviderModels, saveUserProviderKey } from "@/services/providerKeys";
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -10,7 +10,8 @@ export async function GET() {
   }
 
   const savedProviders = await listUserProviderKeyNames(userId);
-  return NextResponse.json({ savedProviders });
+  const models = await listUserProviderModels(userId);
+  return NextResponse.json({ savedProviders, models });
 }
 
 export async function POST(request: Request) {

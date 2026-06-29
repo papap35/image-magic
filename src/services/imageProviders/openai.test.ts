@@ -55,4 +55,18 @@ describe("OpenAiImageProvider", () => {
     expect(options.body.get("prompt")).toBe("make it sunset");
     expect(result.url).toBe("https://example.com/edited.png");
   });
+
+  it("正常情況：credentials 帶有 model 時，改用該模型", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ url: "https://example.com/a.png" }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new OpenAiImageProvider();
+    await provider.generate({ prompt: "a cat" }, { apiKey: "key", model: "dall-e-3" });
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect(JSON.parse(options.body).model).toBe("dall-e-3");
+  });
 });

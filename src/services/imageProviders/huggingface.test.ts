@@ -43,4 +43,19 @@ describe("HuggingFaceImageProvider", () => {
       parameters: { prompt: "make it sunset" },
     });
   });
+
+  it("正常情況：credentials 帶有 model 時，文字生圖改用該模型", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/png" }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new HuggingFaceImageProvider();
+    await provider.generate({ prompt: "a cat" }, { apiKey: "key", model: "stabilityai/stable-diffusion-2-1" });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("stabilityai/stable-diffusion-2-1");
+  });
 });

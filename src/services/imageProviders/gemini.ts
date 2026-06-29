@@ -8,7 +8,8 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./
 // image+text-to-image (img2img) through the same generateContent endpoint,
 // unlike OpenAI/Hugging Face which split these into separate
 // endpoints/models.
-const DEFAULT_MODEL = "gemini-2.5-flash-image";
+export const DEFAULT_MODEL = "gemini-2.5-flash-image";
+export const MODEL_OPTIONS = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 interface GeminiPart {
@@ -39,6 +40,7 @@ export class GeminiImageProvider implements ImageProvider {
     if (!apiKey) {
       throw new Error("Missing Gemini API key");
     }
+    const model = credentials.model || DEFAULT_MODEL;
 
     const parts: GeminiPart[] = [{ text: params.prompt }];
     if (params.referenceImage) {
@@ -47,7 +49,7 @@ export class GeminiImageProvider implements ImageProvider {
       });
     }
 
-    const response = await fetch(`${API_BASE_URL}/${DEFAULT_MODEL}:generateContent`, {
+    const response = await fetch(`${API_BASE_URL}/${model}:generateContent`, {
       method: "POST",
       headers: {
         "x-goog-api-key": apiKey,
