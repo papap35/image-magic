@@ -3,7 +3,8 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./
 // gpt-image-1 is OpenAI's current image model and supports both generation
 // and edits (img2img) under the same account access. dall-e-2/dall-e-3 are
 // being phased out and may not exist for newer API keys/projects.
-const DEFAULT_MODEL = "gpt-image-1";
+export const DEFAULT_MODEL = "gpt-image-1";
+export const MODEL_OPTIONS = ["gpt-image-1", "dall-e-3", "dall-e-2"];
 
 function extractImageUrl(raw: { data?: Array<{ url?: string; b64_json?: string }> }): string | undefined {
   const entry = raw?.data?.[0];
@@ -29,8 +30,10 @@ export class OpenAiImageProvider implements ImageProvider {
       throw new Error("Missing OpenAI API key");
     }
 
+    const model = credentials.model || DEFAULT_MODEL;
+
     if (params.referenceImage) {
-      return this.generateFromReference(params, params.referenceImage, apiKey);
+      return this.generateFromReference(params, params.referenceImage, apiKey, model);
     }
 
     const response = await fetch("https://api.openai.com/v1/images/generations", {
@@ -40,7 +43,7 @@ export class OpenAiImageProvider implements ImageProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model,
         prompt: params.prompt,
         size: params.size ?? "1024x1024",
         n: 1,
@@ -64,10 +67,11 @@ export class OpenAiImageProvider implements ImageProvider {
     params: GenerateImageParams,
     referenceImage: { base64: string; mimeType: string },
     apiKey: string,
+    model: string,
   ): Promise<GenerateImageResult> {
     const imageBytes = Buffer.from(referenceImage.base64, "base64");
     const form = new FormData();
-    form.append("model", DEFAULT_MODEL);
+    form.append("model", model);
     form.append("image", new Blob([imageBytes], { type: referenceImage.mimeType }), "reference.png");
     form.append("prompt", params.prompt);
     form.append("size", params.size ?? "1024x1024");

@@ -30,7 +30,11 @@ interface ProviderOption {
   id: string;
   label: string;
   authMode: "shared-password" | "byok";
+  defaultModel: string;
+  modelOptions: string[];
 }
+
+const CUSTOM_MODEL_VALUE = "__custom__";
 
 export default function GeneratePage() {
   const [presets, setPresets] = useState<StylePreset[]>([]);
@@ -48,6 +52,10 @@ export default function GeneratePage() {
   const [savingKey, setSavingKey] = useState(false);
   const [editingKey, setEditingKey] = useState(false);
   const [deletingKey, setDeletingKey] = useState(false);
+  const [savedModels, setSavedModels] = useState<Record<string, string | null>>({});
+  const [modelSelect, setModelSelect] = useState("");
+  const [customModelInput, setCustomModelInput] = useState("");
+  const [savingModel, setSavingModel] = useState(false);
 
   const [enhancePrompt, setEnhancePrompt] = useState(false);
   const [enhancePassword, setEnhancePassword] = useState("");
@@ -93,6 +101,7 @@ export default function GeneratePage() {
     const data = await res.json();
     if (res.ok) {
       setSavedProviders(data.savedProviders);
+      setSavedModels(data.models ?? {});
     }
   }
 
@@ -165,6 +174,45 @@ export default function GeneratePage() {
 
   const selectedProvider = providers.find((p) => p.id === providerId);
   const hasSavedKey = savedProviders.includes(providerId);
+
+  useEffect(() => {
+    if (!selectedProvider) {
+      return;
+    }
+    const savedModel = savedModels[providerId];
+    if (savedModel && selectedProvider.modelOptions.includes(savedModel)) {
+      setModelSelect(savedModel);
+      setCustomModelInput("");
+    } else if (savedModel) {
+      setModelSelect(CUSTOM_MODEL_VALUE);
+      setCustomModelInput(savedModel);
+    } else {
+      setModelSelect(selectedProvider.defaultModel);
+      setCustomModelInput("");
+    }
+  }, [providerId, selectedProvider, savedModels]);
+
+  async function handleSaveModel() {
+    const model = modelSelect === CUSTOM_MODEL_VALUE ? customModelInput.trim() : modelSelect;
+    setSavingModel(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/provider-keys/${providerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: model || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error?.message ?? "儲存模型設定失敗");
+      }
+      await loadSavedProviders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "儲存模型設定失敗");
+    } finally {
+      setSavingModel(false);
+    }
+  }
 
   async function handleSaveKey() {
     if (!byokKeyInput.trim()) {
@@ -329,6 +377,39 @@ export default function GeneratePage() {
             </div>
           )}
         </div>
+
+        {selectedProvider && hasSavedKey && (
+          <div className="card">
+            <div className="field">
+              <label htmlFor="model-select">使用的模型</label>
+              <select id="model-select" value={modelSelect} onChange={(e) => setModelSelect(e.target.value)}>
+                {selectedProvider.modelOptions.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                    {model === selectedProvider.defaultModel ? "（預設）" : ""}
+                  </option>
+                ))}
+                <option value={CUSTOM_MODEL_VALUE}>自訂...</option>
+              </select>
+              {modelSelect === CUSTOM_MODEL_VALUE && (
+                <input
+                  style={{ marginTop: 8 }}
+                  value={customModelInput}
+                  onChange={(e) => setCustomModelInput(e.target.value)}
+                  placeholder="輸入自訂模型 id，例如 stabilityai/stable-diffusion-2"
+                />
+              )}
+              <p className="hint">
+                provider 更新可用模型清單時，可以在這裡直接切換或填入新的模型 id，不需要每次都改程式碼。
+              </p>
+              <div className="button-row">
+                <button type="button" onClick={handleSaveModel} disabled={savingModel}>
+                  {savingModel ? "儲存中..." : "儲存模型設定"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="card">
           <label className="checkbox-label" htmlFor="enhance-prompt-checkbox">

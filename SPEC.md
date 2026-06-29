@@ -375,6 +375,39 @@ version v1beta, or is not supported for generateContent`——該 preview 模型
   /api/provider-keys/[provider]`。切換 provider 下拉選單時重置這兩個 state，
   避免殘留前一個 provider 的編輯狀態。
 
+#### 6m. 各 provider 可自選／自訂模型 `[x]`
+**背景**：各家 AI provider（尤其 Hugging Face、Gemini）的可用模型清單會隨時間
+變動或下架，過去每次模型失效都要回來改程式碼裡的 `DEFAULT_MODEL` 常數再重新
+部署。讓使用者可以直接在畫面上切換模型，不用每次都要改 code。
+**實作備註**：
+- `prisma/schema.prisma`：`ProviderApiKey` 新增可為空的 `model` 欄位
+  （migration `20260629120000_add_provider_api_key_model`），儲存使用者對該
+  provider 的模型覆寫；`null` 代表沿用 provider 程式碼內建的預設模型。
+- 每個 provider（`openai.ts`／`huggingface.ts`／`gemini.ts`）的 `DEFAULT_MODEL`
+  與新增的 `MODEL_OPTIONS`（精選模型清單）改為 `export`；`generate()` 改用
+  `credentials.model || DEFAULT_MODEL`，由呼叫端決定要不要覆寫。Hugging Face
+  的覆寫只影響文字生圖模型，img2img 用的 `timbrooks/instruct-pix2pix`
+  仍維持固定，避免一次改動範圍過大。
+- `src/services/imageProviders/types.ts`／`index.ts`：`ProviderDefinition`
+  新增 `defaultModel`、`modelOptions`，讓 `/api/providers` 回傳的資料可以直接
+  餵給前端下拉選單。
+- `src/services/providerKeys.ts`：新增 `saveUserProviderModel`、
+  `getUserProviderModel`、`listUserProviderModels`；`src/services/
+  providerCredentials.ts` 在組裝 `credentials` 時，把使用者儲存的 `model`
+  一併帶入（沒有設定就不帶，由 provider 自己 fallback 到預設值）。
+- API：`GET /api/provider-keys` 回應多帶一個 `models` 欄位（provider →
+  使用者設定的模型，沒設定則為 `null`）；新增 `PATCH
+  /api/provider-keys/[provider]`，body `{ model: string | null }`，只更新模型
+  欄位，不需要重新輸入 API Key（依賴使用者已存在的 key 那一筆 row，沒有 key
+  時會回 400）。
+- `src/app/app/generate/page.tsx`：已儲存 Key 的 provider 會多顯示一張卡片，
+  下拉選單列出 `modelOptions`（標註哪個是預設）外加「自訂...」選項，選自訂時
+  顯示文字輸入框可填任意模型 id；按「儲存模型設定」呼叫上述 `PATCH`
+  endpoint。挑選邏輯（`useEffect` 依 `providerId`/`savedModels` 同步
+  `modelSelect`/`customModelInput`）：已存的模型若在精選清單內就選那個選項，
+  不在清單內（使用者自訂過）就自動切到「自訂...」並帶入該值，沒存過模型則
+  顯示 provider 的預設模型。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）

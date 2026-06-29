@@ -64,4 +64,23 @@ describe("GeminiImageProvider", () => {
     const provider = new GeminiImageProvider();
     await expect(provider.generate({ prompt: "a cat" }, { apiKey: "bad" })).rejects.toThrow("invalid api key");
   });
+
+  it("正常情況：credentials 帶有 model 時，改用該模型", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: "Zm9v" } }] } }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new GeminiImageProvider();
+    await provider.generate(
+      { prompt: "a cat" },
+      { apiKey: "key", model: "gemini-2.0-flash-preview-image-generation" },
+    );
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("gemini-2.0-flash-preview-image-generation:generateContent");
+  });
 });

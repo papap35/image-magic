@@ -28,4 +28,8 @@ export interface ProviderDefinition {
   id: string;
   label: string;
   authMode: ProviderAuthMode;
+  /** The model used when the user hasn't saved a model override. */
+  defaultModel: string;
+  /** Curated model ids shown in the model dropdown; users can also type a custom id. */
+  modelOptions: string[];
 }
