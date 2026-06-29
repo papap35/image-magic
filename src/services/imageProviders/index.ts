@@ -1,10 +1,12 @@
 import type { ImageProvider, ProviderDefinition } from "./types";
 import { HuggingFaceImageProvider } from "./huggingface";
 import { OpenAiImageProvider } from "./openai";
+import { GeminiImageProvider } from "./gemini";
 
 const providers: Record<string, ImageProvider> = {
   openai: new OpenAiImageProvider(),
   huggingface: new HuggingFaceImageProvider(),
+  gemini: new GeminiImageProvider(),
 };
 
 export function getImageProvider(name: string): ImageProvider | null {
@@ -20,6 +22,7 @@ export function getImageProvider(name: string): ImageProvider | null {
 export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   { id: "openai", label: "OpenAI（自備 API Key）", authMode: "byok" },
   { id: "huggingface", label: "Hugging Face（自備 API Key）", authMode: "byok" },
+  { id: "gemini", label: "Google Gemini（自備 API Key）", authMode: "byok" },
 ];
 
 export type { ImageProvider, GenerateImageParams, GenerateImageResult, ProviderDefinition } from "./types";

@@ -337,6 +337,26 @@
   `page`，目前頁碼套用 `active` class 標示。沒有改動後端 API（`GET
   /api/generation-jobs` 本來就回傳全部紀錄），純前端切資料。
 
+#### 6k. 新增 Google Gemini 圖片生成 provider `[x]`
+**背景**：OpenAI 的圖片模型沒有免費額度，Hugging Face `hf-inference`
+路由實際服務的精選模型清單會變動、文件也不完整，多次更換 `DEFAULT_MODEL`
+仍持續收到 `Model not supported by provider hf-inference`。Google Gemini
+API 的圖片輸出模型在免費額度內可用，且文字生圖與圖生圖（img2img）共用同一個
+`generateContent` 端點，不需要像 OpenAI／Hugging Face 拆成兩個端點，新增一個
+provider 讓使用者有可以實際免費跑起來的選項。
+**實作備註**：
+- `src/services/imageProviders/gemini.ts`：新增 `GeminiImageProvider`，呼叫
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`，
+  以 `x-goog-api-key` header 帶入 API Key；`contents[0].parts` 永遠帶入文字
+  prompt，有參考圖片時多帶一個 `inlineData`（base64 + mimeType）part 達成
+  img2img，不需要切換端點或模型。`generationConfig.responseModalities:
+  ["TEXT", "IMAGE"]` 是讓回應包含圖片 part 的必要設定。回應的圖片在
+  `candidates[0].content.parts[].inlineData` 裡，轉成 `data:` URL 回傳，
+  與既有 provider 的回傳格式一致。
+- `src/services/imageProviders/index.ts`：在 `providers` 與
+  `PROVIDER_DEFINITIONS` 中註冊 `gemini`（`authMode: "byok"`），使用者一樣
+  需要自備 API Key 才能使用。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
