@@ -607,7 +607,22 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
                 {job.status === "success" && job.resultUrl && (
                   <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
                 )}
-                {job.status === "failed" && <p role="alert">錯誤：{job.error}</p>}
+                {job.status === "failed" && (
+                  <>
+                    <p role="alert">錯誤：{job.error}</p>
+                    {job.resultUrl && (
+                      <>
+                        <p className="hint">圖片已生成成功，僅上傳雲端硬碟失敗，可以自行下載：</p>
+                        <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                        <div>
+                          <a href={job.resultUrl} download={`image-magic-${job.id}.png`}>
+                            下載圖片
+                          </a>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
                 {job.status === "pending" && <span className="hint">處理中...</span>}
               </td>
               <td className="hint">{new Date(job.createdAt).toLocaleString()}</td>
