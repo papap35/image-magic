@@ -446,6 +446,25 @@ Drive；若上傳那一步失敗（例如 access token 過期、Drive API 回應
   傳物件，不能解析時拋出包含原始回應內容（截斷至 200 字）的可讀錯誤，而不是
   讓 `JSON.parse` 的 `SyntaxError` 蓋掉真正的失敗原因。
 
+#### 6p. Gemini 新增 Nano Banana 2 / Pro 模型選項；生成紀錄圖片可點開放大 `[x]`
+**背景**：使用者反饋免費的 `gemini-2.5-flash-image` 畫質比 OpenAI 差，詢問
+Gemini 是否有更好的模型——Google 在 2026 上半年推出了
+`gemini-3.1-flash-image-preview`（Nano Banana 2，4K、文字渲染更準）與
+`gemini-3-pro-image-preview`（Nano Banana Pro，畫質最高），兩者都需要開通
+Gemini API 帳號的付費功能才能使用（無免費額度）。另外，生成紀錄表格裡的圖
+片縮圖目前無法點開看大圖，只能看 160px 的縮圖。
+**實作備註**：
+- `src/services/imageProviders/gemini.ts`：`MODEL_OPTIONS` 新增
+  `gemini-3.1-flash-image-preview`、`gemini-3-pro-image-preview`，使用者開
+  通付費後可以直接在「使用的模型」下拉選單切換，不需要改程式碼；
+  `DEFAULT_MODEL` 仍維持 `gemini-2.5-flash-image`（唯一有免費額度的選項）。
+- `src/app/app/generate/page.tsx`：生成紀錄表格的縮圖（成功或失敗但仍有
+  `resultUrl` 兩種情況）改成包在 `<button>` 裡，點擊會開啟新增的
+  `Lightbox` 元件——全螢幕半透明遮罩 + 置中顯示原圖，點遮罩或右上角 ✕ 按鈕
+  或按 `Esc` 都會關閉。
+- `src/app/globals.css`：新增 `.job-thumb-button`、`.lightbox-overlay`、
+  `.lightbox-image`、`.lightbox-close` 樣式。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）

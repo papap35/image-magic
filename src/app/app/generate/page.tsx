@@ -539,6 +539,7 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
   const [page, setPage] = useState(1);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -605,7 +606,14 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
               </td>
               <td>
                 {job.status === "success" && job.resultUrl && (
-                  <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                  <button
+                    type="button"
+                    className="job-thumb-button"
+                    onClick={() => setLightboxUrl(job.resultUrl)}
+                    aria-label="放大檢視圖片"
+                  >
+                    <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                  </button>
                 )}
                 {job.status === "failed" && (
                   <>
@@ -613,7 +621,14 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
                     {job.resultUrl && (
                       <>
                         <p className="hint">圖片已生成成功，僅上傳雲端硬碟失敗，可以自行下載：</p>
-                        <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                        <button
+                          type="button"
+                          className="job-thumb-button"
+                          onClick={() => setLightboxUrl(job.resultUrl)}
+                          aria-label="放大檢視圖片"
+                        >
+                          <img className="job-thumb" src={job.resultUrl} alt={job.promptFinal} />
+                        </button>
                         <div>
                           <a href={job.resultUrl} download={`image-magic-${job.id}.png`}>
                             下載圖片
@@ -631,6 +646,33 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
         })}
       </tbody>
       </table>
+      {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </>
+  );
+}
+
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <button type="button" className="lightbox-close" onClick={onClose} aria-label="關閉">
+        ✕
+      </button>
+      <img
+        className="lightbox-image"
+        src={url}
+        alt="放大檢視"
+        onClick={(event) => event.stopPropagation()}
+      />
+    </div>
   );
 }

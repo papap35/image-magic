@@ -9,7 +9,10 @@ import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./
 // unlike OpenAI/Hugging Face which split these into separate
 // endpoints/models.
 export const DEFAULT_MODEL = "gemini-2.5-flash-image";
-export const MODEL_OPTIONS = ["gemini-2.5-flash-image"];
+// gemini-3.1-flash-image-preview ("Nano Banana 2") and gemini-3-pro-image-preview
+// ("Nano Banana Pro") are higher-quality successors with no free tier as of
+// 2026-06 — they require billing enabled on the Gemini API project.
+export const MODEL_OPTIONS = ["gemini-2.5-flash-image", "gemini-3.1-flash-image-preview", "gemini-3-pro-image-preview"];
 const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Ids that used to be valid but Google has since retired. Users who saved
