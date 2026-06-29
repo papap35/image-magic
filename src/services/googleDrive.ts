@@ -1,5 +1,3 @@
-import { buildMultipartUploadBody, type DriveFileMetadata } from "@/lib/driveUpload";
-
 const APP_FOLDER_NAME = "ImageMagic";
 
 export interface DriveUploadResult {
@@ -94,7 +92,17 @@ export async function ensureAppFolder(accessToken: string, existingFolderId?: st
   return createData.id as string;
 }
 
-/** Upload raw image bytes into the given Drive folder, returning the file id and a viewable URL. */
+/**
+ * Upload raw image bytes into the given Drive folder, returning the file id
+ * and a viewable URL.
+ *
+ * Uses the two-step create-then-upload flow (plain JSON metadata POST,
+ * followed by a raw-bytes media PATCH) instead of a single hand-rolled
+ * `multipart/related` request. Drive's multipart parser is strict about
+ * exact boundary/CRLF formatting, and a hand-built multipart body was prone
+ * to intermittent "Malformed multipart body" rejections; splitting metadata
+ * and media into two plain requests removes that whole class of bug.
+ */
 export async function uploadImageToDrive(
   accessToken: string,
   folderId: string,
@@ -102,20 +110,33 @@ export async function uploadImageToDrive(
   mimeType: string,
   fileBytes: Buffer,
 ): Promise<DriveUploadResult> {
-  const metadata: DriveFileMetadata = { name: fileName, parents: [folderId] };
-  const { contentType, body } = buildMultipartUploadBody(metadata, fileBytes, mimeType);
-
-  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
+  const create = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      "Content-Type": contentType,
+      "Content-Type": "application/json",
     },
-    body: new Uint8Array(body),
+    body: JSON.stringify({ name: fileName, parents: [folderId] }),
   });
+  const createData = await parseJsonResponse(create);
+  if (!create.ok || !createData?.id) {
+    throw new Error(createData?.error?.message ?? "Failed to create Drive file");
+  }
+  const fileId = createData.id as string;
 
-  const raw = await parseJsonResponse(response);
-  if (!response.ok || !raw?.id) {
+  const upload = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,webViewLink`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": mimeType,
+      },
+      body: new Uint8Array(fileBytes),
+    },
+  );
+  const raw = await parseJsonResponse(upload);
+  if (!upload.ok || !raw?.id) {
     throw new Error(raw?.error?.message ?? "Failed to upload image to Drive");
   }
 
