@@ -7,6 +7,34 @@ export interface DriveUploadResult {
   viewUrl: string;
 }
 
+/**
+ * Drive/OAuth endpoints normally return JSON, but on some failures (e.g. a
+ * malformed multipart request) they return a plain-text body instead, which
+ * crashes a bare `response.json()`. Parse defensively so callers get a
+ * readable error message instead of a JSON.parse SyntaxError.
+ */
+interface DriveJsonResponse {
+  access_token?: string;
+  error_description?: string;
+  trashed?: boolean;
+  files?: Array<{ id?: string }>;
+  id?: string;
+  webViewLink?: string;
+  error?: { message?: string };
+}
+
+async function parseJsonResponse(response: Response): Promise<DriveJsonResponse> {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Drive API 回應非 JSON 格式（HTTP ${response.status}）：${text.slice(0, 200)}`);
+  }
+}
+
 /** Exchange a stored Google refresh token for a fresh Drive-scoped access token. */
 export async function refreshAccessToken(refreshToken: string): Promise<string> {
   const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -20,7 +48,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     }),
   });
 
-  const raw = await response.json();
+  const raw = await parseJsonResponse(response);
   if (!response.ok || !raw?.access_token) {
     throw new Error(raw?.error_description ?? "Failed to refresh Google access token");
   }
@@ -37,7 +65,7 @@ export async function ensureAppFolder(accessToken: string, existingFolderId?: st
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (check.ok) {
-      const data = await check.json();
+      const data = await parseJsonResponse(check);
       if (!data.trashed) return existingFolderId;
     }
   }
@@ -46,7 +74,7 @@ export async function ensureAppFolder(accessToken: string, existingFolderId?: st
   const search = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  const searchData = await search.json();
+  const searchData = await parseJsonResponse(search);
   if (search.ok && searchData?.files?.[0]?.id) {
     return searchData.files[0].id as string;
   }
@@ -59,7 +87,7 @@ export async function ensureAppFolder(accessToken: string, existingFolderId?: st
     },
     body: JSON.stringify({ name: APP_FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" }),
   });
-  const createData = await create.json();
+  const createData = await parseJsonResponse(create);
   if (!create.ok || !createData?.id) {
     throw new Error(createData?.error?.message ?? "Failed to create Drive app folder");
   }
@@ -86,7 +114,7 @@ export async function uploadImageToDrive(
     body: new Uint8Array(body),
   });
 
-  const raw = await response.json();
+  const raw = await parseJsonResponse(response);
   if (!response.ok || !raw?.id) {
     throw new Error(raw?.error?.message ?? "Failed to upload image to Drive");
   }

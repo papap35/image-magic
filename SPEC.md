@@ -423,6 +423,29 @@ version v1beta, or is not supported for generateContent`——該 preview 模型
   存到舊值的覆寫設定不需要手動清除就能自動修正，往後其他模型被下架時也可以
   用同樣方式加進這個集合。
 
+#### 6o. 圖片生成成功但雲端硬碟上傳失敗時，提供圖片預覽與下載 `[x]`
+**背景**：圖片 provider 呼叫成功之後才會把結果上傳到使用者的 Google
+Drive；若上傳那一步失敗（例如 access token 過期、Drive API 回應異常等），
+`GenerationJob` 會被標記為 `failed`，畫面上只顯示錯誤訊息，使用者看不到也拿
+不到其實已經生成成功的圖片，只能重新生成一次（可能因此多花一次 provider 額
+度/費用）。另外，上傳失敗時的錯誤訊息出現過 `Unexpected token 'M',
+"Malformed "... is not valid JSON`，代表 Drive API 在某些失敗情況下回應的是
+純文字（例如 `Malformed multipart/related request`）而不是 JSON，程式對
+`response.json()` 沒有防呆，直接讓 `JSON.parse` 例外蓋掉了真正有用的錯誤訊
+息。
+**實作備註**：
+- `src/services/generationJobs.ts` 在上傳 Drive 失敗時已經有把 provider 回傳
+  的 `result.url` 存到 `job.resultUrl`（即使 `status` 是 `failed`），這次只
+  是把這個既有資料用在前端。
+- `src/app/app/generate/page.tsx`：生成紀錄表格裡，`status === "failed"` 且
+  `resultUrl` 存在時，除了顯示錯誤訊息，也會顯示圖片縮圖與一個帶
+  `download` 屬性的超連結，讓使用者可以直接下載這張已生成但尚未存進 Drive
+  的圖片。
+- `src/services/googleDrive.ts`：新增 `parseJsonResponse()`，所有原本直接呼
+  叫 `response.json()` 的地方都改用它——先讀取 `text()`，能解析成 JSON 才回
+  傳物件，不能解析時拋出包含原始回應內容（截斷至 200 字）的可讀錯誤，而不是
+  讓 `JSON.parse` 的 `SyntaxError` 蓋掉真正的失敗原因。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
