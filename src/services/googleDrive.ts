@@ -142,3 +142,28 @@ export async function uploadImageToDrive(
 
   return { fileId: raw.id as string, viewUrl: raw.webViewLink ?? `https://drive.google.com/file/d/${raw.id}/view` };
 }
+
+export interface DriveFileContent {
+  mimeType: string;
+  bytes: Buffer;
+}
+
+/**
+ * Download a Drive file's raw bytes via `alt=media`. Used to proxy a user's
+ * private Drive-stored image back to the browser without relying on the
+ * browser having its own authenticated Google session (which Drive's
+ * `thumbnailLink` would require, since uploaded images are private to the
+ * user's own Drive).
+ */
+export async function downloadDriveFile(accessToken: string, fileId: string): Promise<DriveFileContent> {
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Failed to download Drive file (${response.status})：${text.slice(0, 200)}`);
+  }
+  const mimeType = response.headers.get("content-type") ?? "application/octet-stream";
+  const bytes = Buffer.from(await response.arrayBuffer());
+  return { mimeType, bytes };
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { uploadImageToDrive } from "./googleDrive";
+import { downloadDriveFile, uploadImageToDrive } from "./googleDrive";
 
 describe("uploadImageToDrive", () => {
   afterEach(() => {
@@ -64,5 +64,40 @@ describe("uploadImageToDrive", () => {
     await expect(
       uploadImageToDrive("token", "folder-1", "a.png", "image/png", Buffer.from([1, 2, 3])),
     ).rejects.toThrow("insufficient permission");
+  });
+});
+
+describe("downloadDriveFile", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("正常情況：以 alt=media 下載檔案內容，回傳 mimeType 與 bytes", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: (key: string) => (key.toLowerCase() === "content-type" ? "image/png" : null) },
+      arrayBuffer: async () => new Uint8Array([7, 8, 9]).buffer,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await downloadDriveFile("token", "file-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("https://www.googleapis.com/drive/v3/files/file-1?alt=media", {
+      headers: { Authorization: "Bearer token" },
+    });
+    expect(result.mimeType).toBe("image/png");
+    expect(result.bytes).toEqual(Buffer.from([7, 8, 9]));
+  });
+
+  it("異常情況：下載失敗時拋出包含狀態碼與內容的錯誤", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: async () => "Not found",
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(downloadDriveFile("token", "missing")).rejects.toThrow("404");
   });
 });
