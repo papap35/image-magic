@@ -63,6 +63,10 @@ export async function getImageContent(userId: string, id: string) {
   return downloadDriveFile(accessToken, image.driveFileId);
 }
 
+export function getImage(userId: string, id: string) {
+  return prisma.image.findFirst({ where: { id, userId } });
+}
+
 export function listImages(userId: string) {
   return prisma.image.findMany({
     where: { userId },

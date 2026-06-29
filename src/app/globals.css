@@ -430,6 +430,63 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--color-border);
 }
 
+.gallery-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.gallery-grid-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.gallery-grid-item a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.gallery-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.gallery-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-grid-item .gallery-caption {
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-image-wrap {
+  margin: 16px 0;
+}
+
+.detail-image-wrap img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  display: block;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;

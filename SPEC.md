@@ -631,6 +631,33 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 
 ---
 
+#### 6v. 圖庫加上相簿排版與詳細內容頁 `[x]`
+**背景**：6u 修好縮圖之後，使用者發現圖庫只是一條直向列表，沒有相簿該有
+的基本互動：格狀排版、點縮圖看大圖、看/編輯標題敘述標籤、下載原始檔。
+**實作備註**：
+- `src/app/app/images/page.tsx` 改成縮圖格狀排版（`.gallery-grid`，CSS
+  grid `repeat(auto-fill, minmax(180px, 1fr))`，縮圖用 `aspect-ratio: 1/1`
+  + `object-fit: cover` 裁切成正方形），每張縮圖用 `next/link` 包成連結，
+  指到新的詳細內容頁 `/app/images/:id`；列表頁不再內嵌標籤編輯器（移到詳
+  細內容頁）。
+- 新增 `GET /api/images/:id`（`src/app/api/images/[id]/route.ts`）：回傳單
+  張圖片完整欄位（沿用既有 `findFirst({ id, userId })` 所有權檢查，新增
+  `services/images.ts` 的 `getImage(userId, id)`）。
+- 新增詳細內容頁 `src/app/app/images/[id]/page.tsx`：
+  - 大圖一律透過 6u 新增的 `/api/images/:id/content` 代理載入（不依賴
+    Drive 公開連結）。
+  - 下載按鈕：`<a href="/api/images/:id/content" download>`，直接下載原始
+    檔；目前每張圖片只有上傳到 Drive 的單一檔案，沒有多種畫質可選，故只
+    有一個下載按鈕（之後若要支援多畫質需要先改資料模型，不在本次範圍）。
+  - 「在 Google Drive 開啟」連結（`driveViewUrl`，僅在存在時顯示）。
+  - 標題/敘述編輯表單，沿用既有 `PATCH /api/images/:id`。
+  - 標籤編輯器：把原本內嵌在列表頁的 `ImageTagEditor` 抽成共用元件
+    `src/components/ImageTagEditor.tsx`，列表頁與詳細頁都能用。
+- 新增 CSS：`.gallery-grid`／`.gallery-grid-item`／`.gallery-thumb-wrap`／
+  `.detail-image-wrap`（`src/app/globals.css`）。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`
