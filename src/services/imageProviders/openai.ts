@@ -1,10 +1,14 @@
 import type { GenerateImageParams, GenerateImageResult, ImageProvider } from "./types";
 
-// gpt-image-1 is OpenAI's current image model and supports both generation
-// and edits (img2img) under the same account access. dall-e-2/dall-e-3 are
-// being phased out and may not exist for newer API keys/projects.
-export const DEFAULT_MODEL = "gpt-image-1";
-export const MODEL_OPTIONS = ["gpt-image-1", "dall-e-3", "dall-e-2"];
+// gpt-image-2 is OpenAI's current flagship image model (released 2026-04,
+// best prompt adherence/photorealism). gpt-image-1.5 and gpt-image-1-mini are
+// still-supported predecessors; gpt-image-1 is scheduled for deprecation on
+// 2026-10-23. All four support both /images/generations and /images/edits
+// (img2img) under the same account access. dall-e-2/dall-e-3 were fully
+// removed from the API on 2026-05-12 and are deliberately not listed here —
+// they would just 404.
+export const DEFAULT_MODEL = "gpt-image-2";
+export const MODEL_OPTIONS = ["gpt-image-2", "gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"];
 
 function extractImageUrl(raw: { data?: Array<{ url?: string; b64_json?: string }> }): string | undefined {
   const entry = raw?.data?.[0];
@@ -14,7 +18,8 @@ function extractImageUrl(raw: { data?: Array<{ url?: string; b64_json?: string }
   if (entry.url) {
     return entry.url;
   }
-  // gpt-image-1 always returns base64 (no hosted url), unlike dall-e-2/3.
+  // gpt-image-* models always return base64 (no hosted url), unlike the
+  // now-retired dall-e-2/3.
   if (entry.b64_json) {
     return `data:image/png;base64,${entry.b64_json}`;
   }

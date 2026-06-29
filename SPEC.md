@@ -465,6 +465,31 @@ Gemini API 帳號的付費功能才能使用（無免費額度）。另外，生
 - `src/app/globals.css`：新增 `.job-thumb-button`、`.lightbox-overlay`、
   `.lightbox-image`、`.lightbox-close` 樣式。
 
+#### 6q. 更新 OpenAI 模型清單為 gpt-image-2 系列（DALL-E 已下架） `[x]`
+**背景**：使用者反饋即使 Gemini 用了 Nano Banana Pro 畫質仍輸 OpenAI 一截，
+詢問 OpenAI 目前實際有哪些 text-to-image／img2img 模型可用。查證後發現：(1)
+DALL-E 2／3 已於 2026-05-12 從 OpenAI API 完全下架，舊的 `MODEL_OPTIONS`
+裡列的 `dall-e-3`／`dall-e-2` 選了會直接 404，是死選項；(2) OpenAI 目前的
+旗艦模型是 2026-04 發布的 `gpt-image-2`（prompt 遵從度與真實感最佳，主流評
+測排名第一，略勝 Gemini 3 系列），其次是 `gpt-image-1.5`，較舊的
+`gpt-image-1` 將於 2026-10-23 棄用，`gpt-image-1-mini` 為較便宜的輕量版；
+四個模型都同時支援 `/v1/images/generations`（文字生圖）與
+`/v1/images/edits`（參考圖片生圖）。
+另外調查了其他家 AI 圖片模型的文字生圖／參考圖片生圖能力作為後續可能方向：
+FLUX（Black Forest Labs，相片真實感方面評價很高）、Ideogram／Imagen 3（文
+字渲染最準）、Recraft V3（設計／向量輸出）、Midjourney v7（美術風格最強但
+無官方 API）。其中 FLUX 系列原本想透過現有的 Hugging Face provider 取用，
+但 `huggingface.ts` 的程式碼註解已記錄 FLUX 只透過 fal-ai 的非同步
+submit/poll/fetch 佇列 API 提供，與目前 hf-inference router 用的同步
+request/response 協定不同，要支援需要新增一套完全不同的請求流程，屬於需要
+另開一個 PR 評估的較大改動，這次先不做。
+**實作備註**：
+- `src/services/imageProviders/openai.ts`：`DEFAULT_MODEL` 改為
+  `gpt-image-2`；`MODEL_OPTIONS` 改為 `["gpt-image-2", "gpt-image-1.5",
+  "gpt-image-1", "gpt-image-1-mini"]`，移除已下架的 `dall-e-3`／`dall-e-2`。
+  `generate()`／`generateFromReference()` 邏輯不變（兩個 endpoint 對四個
+  gpt-image-* 模型都適用）。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
