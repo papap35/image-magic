@@ -46,6 +46,8 @@ export default function GeneratePage() {
   const [savedProviders, setSavedProviders] = useState<string[]>([]);
   const [byokKeyInput, setByokKeyInput] = useState("");
   const [savingKey, setSavingKey] = useState(false);
+  const [editingKey, setEditingKey] = useState(false);
+  const [deletingKey, setDeletingKey] = useState(false);
 
   const [enhancePrompt, setEnhancePrompt] = useState(false);
   const [enhancePassword, setEnhancePassword] = useState("");
@@ -181,11 +183,30 @@ export default function GeneratePage() {
         throw new Error(data?.error?.message ?? "儲存 API Key 失敗");
       }
       setByokKeyInput("");
+      setEditingKey(false);
       await loadSavedProviders();
     } catch (err) {
       setError(err instanceof Error ? err.message : "儲存 API Key 失敗");
     } finally {
       setSavingKey(false);
+    }
+  }
+
+  async function handleDeleteKey() {
+    setDeletingKey(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/provider-keys/${providerId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error?.message ?? "清空 API Key 失敗");
+      }
+      setEditingKey(false);
+      await loadSavedProviders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "清空 API Key 失敗");
+    } finally {
+      setDeletingKey(false);
     }
   }
 
@@ -245,7 +266,15 @@ export default function GeneratePage() {
         <div className="card">
           <div className="field">
             <label htmlFor="provider-select">AI Provider</label>
-            <select id="provider-select" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+            <select
+              id="provider-select"
+              value={providerId}
+              onChange={(e) => {
+                setProviderId(e.target.value);
+                setEditingKey(false);
+                setByokKeyInput("");
+              }}
+            >
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
                   {provider.label}
@@ -256,8 +285,18 @@ export default function GeneratePage() {
 
           {selectedProvider && (
             <div>
-              {hasSavedKey ? (
-                <p className="hint">已儲存此 provider 的 API Key。</p>
+              {hasSavedKey && !editingKey ? (
+                <div className="field">
+                  <p className="hint">已儲存此 provider 的 API Key。</p>
+                  <div className="button-row">
+                    <button type="button" className="secondary" onClick={() => setEditingKey(true)}>
+                      更換 API Key
+                    </button>
+                    <button type="button" className="danger" onClick={handleDeleteKey} disabled={deletingKey}>
+                      {deletingKey ? "清空中..." : "清空 API Key"}
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="field">
                   <label htmlFor="provider-api-key">你的 {selectedProvider.label} API Key</label>
@@ -272,6 +311,18 @@ export default function GeneratePage() {
                     <button type="button" onClick={handleSaveKey} disabled={savingKey}>
                       {savingKey ? "儲存中..." : "儲存 API Key"}
                     </button>
+                    {hasSavedKey && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          setEditingKey(false);
+                          setByokKeyInput("");
+                        }}
+                      >
+                        取消
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

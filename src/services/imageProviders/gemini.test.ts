@@ -19,7 +19,7 @@ describe("GeminiImageProvider", () => {
     const result = await provider.generate({ prompt: "a cat" }, { apiKey: "key" });
 
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toContain("gemini-2.0-flash-preview-image-generation:generateContent");
+    expect(url).toContain("gemini-2.5-flash-image:generateContent");
     expect(options.headers["x-goog-api-key"]).toBe("key");
     expect(JSON.parse(options.body).contents[0].parts).toEqual([{ text: "a cat" }]);
     expect(result.url).toBe("data:image/png;base64,Zm9v");
