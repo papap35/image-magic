@@ -492,6 +492,39 @@ request/response 協定不同，要支援需要新增一套完全不同的請求
 
 ---
 
+#### 6r. 新增 fal.ai（FLUX）圖片生成 provider `[x]`
+**背景**：延續 6q 的調查，使用者要求另開 PR 實作 FLUX（Black Forest Labs）
+支援。FLUX 無法透過現有的 Hugging Face provider 取用：hf-inference router
+只接受同步 request/response，FLUX 在 Hugging Face 上只透過 fal-ai 的非同步
+submit/poll/fetch 佇列 API 提供。改直接整合 fal.ai 自己的 API：fal 同時提供
+非同步佇列端點（`queue.fal.run`）與同步端點（`fal.run`，單次
+POST/response 即可拿到結果，FLUX 在 1024x1024 通常數秒內完成），選用同步
+端點以維持與現有 provider（`gemini.ts`／`openai.ts`）一致的簡單 fetch-await
+風格，不需要引入額外的輪詢邏輯。
+**實作備註**：
+- 新增 `src/services/imageProviders/fal.ts`：`FalImageProvider implements
+  ImageProvider`。`DEFAULT_MODEL = "fal-ai/flux/dev"`，`MODEL_OPTIONS =
+  ["fal-ai/flux/dev", "fal-ai/flux/schnell", "fal-ai/flux-pro/v1.1-ultra"]`。
+  文字生圖呼叫 `POST https://fal.run/{model}`，帶 `{ prompt }`；圖生圖固定
+  呼叫 `fal-ai/flux/dev/image-to-image`（同 Hugging Face provider 的慣例，
+  img2img 模型不開放使用者自選），帶 `{ prompt, image_url:
+  "data:{mimeType};base64,{base64}" }`——fal 的 `image_url` 參數同時接受
+  hosted URL 與 base64 data URI，確認可直接沿用既有 `ReferenceImage` 型別
+  （只有 base64＋mimeType，沒有 hosted URL）。驗證 `apiKey` 缺失與
+  API 錯誤回應（取 `detail`／`error` 欄位）。Auth 用
+  `Authorization: Key {apiKey}` header。
+- `src/services/imageProviders/index.ts`：註冊 `fal: new
+  FalImageProvider()`，`PROVIDER_DEFINITIONS` 新增 `{ id: "fal", label:
+  "fal.ai（FLUX，自備 API Key）", authMode: "byok", defaultModel:
+  FAL_DEFAULT_MODEL, modelOptions: FAL_MODEL_OPTIONS }`。沿用既有的
+  provider 抽象（`ImageProvider`／`ProviderDefinition` 介面不變），BYOK
+  key 管理、加密儲存、模型下拉選單 UI 全部沿用既有機制，不需新增程式碼。
+- 新增 `src/services/imageProviders/fal.test.ts`：涵蓋文字生圖、圖生圖（驗證
+  data URI 組裝與呼叫 img2img 端點）、缺少 API Key、API 錯誤訊息、自訂模型
+  覆寫，共 5 個測試 case。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`
