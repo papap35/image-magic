@@ -55,6 +55,7 @@ export default function GeneratePage() {
   const [savingKey, setSavingKey] = useState(false);
   const [editingKey, setEditingKey] = useState(false);
   const [deletingKey, setDeletingKey] = useState(false);
+  const [confirmingDeleteKey, setConfirmingDeleteKey] = useState(false);
   const [savedModels, setSavedModels] = useState<Record<string, string | null>>({});
   const [modelSelect, setModelSelect] = useState("");
   const [customModelInput, setCustomModelInput] = useState("");
@@ -258,6 +259,7 @@ export default function GeneratePage() {
       setError(err instanceof Error ? err.message : "清空 API Key 失敗");
     } finally {
       setDeletingKey(false);
+      setConfirmingDeleteKey(false);
     }
   }
 
@@ -343,7 +345,12 @@ export default function GeneratePage() {
                     <button type="button" className="secondary" onClick={() => setEditingKey(true)}>
                       更換 API Key
                     </button>
-                    <button type="button" className="danger" onClick={handleDeleteKey} disabled={deletingKey}>
+                    <button
+                      type="button"
+                      className="danger"
+                      onClick={() => setConfirmingDeleteKey(true)}
+                      disabled={deletingKey}
+                    >
                       {deletingKey ? "清空中..." : "清空 API Key"}
                     </button>
                   </div>
@@ -550,9 +557,67 @@ export default function GeneratePage() {
 
       <h2>生成紀錄</h2>
       {jobs.length === 0 ? <p>尚未有任何生成請求。</p> : <GenerationJobsTable jobs={jobs} onDeleted={loadJobs} />}
+      {confirmingDeleteKey && (
+        <ConfirmModal
+          title="確認清空 API Key？"
+          message={`此操作無法復原，清空後需要重新輸入「${selectedProvider?.label ?? providerId}」的 API Key 才能繼續生成。`}
+          confirmLabel={deletingKey ? "清空中..." : "確認清空"}
+          confirming={deletingKey}
+          onCancel={() => setConfirmingDeleteKey(false)}
+          onConfirm={handleDeleteKey}
+        />
+      )}
       </>
       )}
     </main>
+  );
+}
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  confirming,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  confirming: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+
+  return (
+    <div className="lightbox-overlay" onClick={onCancel}>
+      <div className="prompt-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="prompt-modal-header">
+          <strong>{title}</strong>
+          <button type="button" className="lightbox-close" onClick={onCancel} aria-label="關閉">
+            ✕
+          </button>
+        </div>
+        <p className="prompt-modal-text">{message}</p>
+        <div className="button-row">
+          <button type="button" className="secondary" onClick={onCancel} disabled={confirming}>
+            取消
+          </button>
+          <button type="button" className="danger" onClick={onConfirm} disabled={confirming}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

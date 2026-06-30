@@ -748,6 +748,11 @@ model），並且要能刪除紀錄、刪除前要有確認視窗。
     原，圖片本身不會被刪除，僅刪除這筆紀錄」，使用者必須按「確認刪除」
     才會真的呼叫 `DELETE /api/generation-jobs/:id`，成功後重新整理列表
     （`loadJobs`）。
+  - 順手把「清空 API Key」也補上同樣的確認視窗（原本是按一下就直接打
+    `DELETE /api/provider-keys/:id`，沒有任何確認）：新增共用的
+    `ConfirmModal` 元件（標題／訊息／確認按鈕文字可自訂，互動模式同樣是
+    點遮罩／✕／Esc 取消），「清空 API Key」按鈕改成先開
+    `ConfirmModal`，確認後才真的呼叫刪除。
 
 ---
 
