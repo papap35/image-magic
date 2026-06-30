@@ -708,6 +708,13 @@ button.danger:hover:not(:disabled) {
   white-space: nowrap;
 }
 
+.error-cell {
+  margin: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .job-thumb {
   max-width: 100%;
   border-radius: 8px;

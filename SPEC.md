@@ -767,6 +767,14 @@ model），並且要能刪除紀錄、刪除前要有確認視窗。
 - **操作欄簡化**：「刪除」文字按鈕改成單一垃圾桶 emoji（🗑️）的
   `.icon-button`，搭配 `aria-label`/`title` 保留可存取性與滑鼠提示，視
   覺上更精簡、也讓本來就窄的「操作」欄（8% 寬）不會擠不下文字。
+- **錯誤訊息可點開查看完整內容**：「結果」欄寬度固定為 22%，失敗 job 的
+  錯誤訊息（`job.error`）若較長，原本直接整段顯示會撐高/撐亂該欄。新增
+  `.error-cell`（沿用 `.prompt-cell` 的單行截斷：`overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;`）讓錯誤訊息固定截斷成
+  一行，並在下方加「查看完整錯誤」按鈕。把既有的 `PromptModal` 元件加上
+  可選的 `title` prop（預設 `"完整 Prompt"`），點擊按鈕時開啟同一個
+  modal 元件、傳入 `title="完整錯誤訊息"` 與完整 `job.error` 文字，沿用
+  既有的點遮罩／✕／Esc 鍵關閉與複製按鈕，不另外重做一套 modal。
 
 ---
 
