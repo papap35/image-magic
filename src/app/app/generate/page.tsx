@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { buildFinalPrompt, type PromptFieldInput } from "@/lib/prompt";
+import { GeneratingPlaceholder } from "@/components/GeneratingPlaceholder";
 import { Spinner } from "@/components/Spinner";
 
 interface StylePreset {
@@ -536,7 +537,12 @@ export default function GeneratePage() {
           <button type="submit" disabled={submitting}>
             {submitting ? `生成中... 已等待 ${elapsedSeconds} 秒` : "開始生成"}
           </button>
-          {submitting && <p className="hint">圖片生成通常需要數十秒，請耐心等候，畫面不會卡住。</p>}
+          {submitting && (
+            <>
+              <GeneratingPlaceholder elapsedSeconds={elapsedSeconds} />
+              <p className="hint">圖片生成通常需要數十秒，請耐心等候，畫面不會卡住。</p>
+            </>
+          )}
         </div>
       </form>
 
