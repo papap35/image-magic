@@ -824,6 +824,43 @@ model），並且要能刪除紀錄、刪除前要有確認視窗。
 
 ---
 
+#### 6z. ComfyUI provider 支援 FLUX 系列 checkpoint `[x]`
+**背景**：6t 新增 ComfyUI provider 時，硬編的工作流（txt2img/img2img）固定
+用 `CheckpointLoaderSimple` 載入單一 all-in-one checkpoint 檔，這對
+SD1.5/SDXL 系列沒問題，但 FLUX 系列模型在 ComfyUI 裡並非單一 checkpoint
+檔，而是拆成獨立的 UNET、雙文字編碼器（T5 + CLIP-L）與 VAE 三個檔案，需要
+完全不同的節點圖（`UNETLoader`/`DualCLIPLoader`/`VAELoader`），用
+`CheckpointLoaderSimple` 載入 FLUX 的 `.safetensors` 會直接在 ComfyUI 端
+失敗。使用者選用 FLUX checkpoint（例如 `flux1-dev.safetensors`）時完全
+無法生成圖片。
+**實作備註**：
+- `src/services/imageProviders/comfyui.ts`：
+  - 新增 `isFluxModel(model)`，以檔名是否包含 `flux`（不分大小寫）判斷是
+    否為 FLUX checkpoint——ComfyUI 的 `/prompt` API 無法事先得知一個
+    checkpoint 檔屬於哪種架構，只能依檔名慣例判斷。
+  - 新增 `buildFluxTxt2ImgWorkflow`／`buildFluxImg2ImgWorkflow`，改用
+    `UNETLoader`（載入 FLUX UNET）、`DualCLIPLoader`（固定載入
+    `t5xxl_fp16.safetensors` + `clip_l.safetensors`，`type: "flux"`）、
+    `VAELoader`（固定載入 `ae.safetensors`）組圖，並加上 `FluxGuidance`
+    節點（guidance 3.5）取代傳統 negative prompt 的角色，`KSampler` 改用
+    FLUX 慣用的 `cfg: 1`、`scheduler: "simple"`。img2img 版本一樣用
+    `LoadImage` 接上傳的參考圖，但 `VAEEncode` 接的是 FLUX 自己的 VAE。
+  - `generate()` 依 `isFluxModel(model)` 決定呼叫 FLUX 版或原本 SDXL 版
+    的 workflow builder，上傳參考圖片、提交工作流、輪詢結果等流程不變。
+  - 限制：`t5xxl_fp16.safetensors`／`clip_l.safetensors`／`ae.safetensors`
+    是官方 FLUX.1 release 常見檔名，與 `DEFAULT_MODEL` 的精神一致——必須
+    與使用者 ComfyUI `models/clip`、`models/vae` 資料夾內的實際檔名完全
+    相符，否則 ComfyUI 會回傳找不到節點/檔案的錯誤；目前沒有 UI 讓使用者
+    自訂這三個檔名，先以官方慣例檔名為預設值。
+- `src/services/imageProviders/comfyui.test.ts`：新增 2 個測試 case（FLUX
+  txt2img 確認改用 `UNETLoader`/`DualCLIPLoader`、FLUX img2img 確認
+  `LoadImage`/`VAEEncode` 接到 FLUX 節點圖），並修正原本誤用
+  `flux1-dev.safetensors` 當「任意自訂 checkpoint」範例的舊測試（現在這
+  個檔名會正確走 FLUX 分支，改用 `custom-checkpoint.safetensors` 驗證自
+  訂 checkpoint 名稱透傳）。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`
