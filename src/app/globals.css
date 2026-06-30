@@ -766,6 +766,10 @@ button.danger:hover:not(:disabled) {
   position: absolute;
   top: 24px;
   right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
   border: none;
@@ -773,6 +777,7 @@ button.danger:hover:not(:disabled) {
   width: 36px;
   height: 36px;
   font-size: 18px;
+  line-height: 1;
   cursor: pointer;
 }
 
