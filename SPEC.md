@@ -627,6 +627,21 @@ API route 都沒進去。
 
 ---
 
+#### 6t-2. 修正 modal 關閉按鈕（✕）沒有置中 `[x]`
+**背景**：`.lightbox-close`（`Lightbox`／`PromptModal` 共用的圓形 ✕ 關閉
+按鈕）沒有自己的 `display`/`justify-content` 設定，吃到全站 `button` 預
+設樣式的 `padding: 9px 16px`；在固定 `width/height: 36px` 的圓形按鈕裡，
+這個 padding 會把內容區擠到只剩幾 px，導致 ✕ 沒有真正置中。
+**實作備註**：
+- `src/app/globals.css` 的 `.lightbox-close` 新增
+  `display: flex; align-items: center; justify-content: center; padding:
+  0; line-height: 1;`，覆蓋掉繼承來的預設 `button` padding，讓 ✕ 在圓形
+  按鈕裡置中。`.prompt-modal-header .lightbox-close` 只覆寫背景/文字色，
+  沒有覆寫 `padding`/`display`，因此這個修正同時套用到 `Lightbox` 與
+  `PromptModal` 兩處的關閉按鈕。
+
+---
+
 #### 6u. 修正圖庫看不到任何已生成圖片 `[x]`
 **背景**：使用者回報圖庫（`/app/app/images`）完全沒有顯示任何已生成的圖
 片。追查後發現兩個獨立問題：
