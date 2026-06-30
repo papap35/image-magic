@@ -677,6 +677,35 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 
 ---
 
+#### 6x. 生成紀錄 Prompt 欄位改成 Modal 顯示全文，不再用內嵌展開 `[x]`
+**背景**：生成紀錄表格的 Prompt 欄位原本用「展開／收合」內嵌切換完整文
+字，但展開後那一列會被撐得很高，破壞整張表格的排版（其他列的高度、視覺
+對齊都被打亂）。使用者要求保持「一行 + `...`」的截斷顯示，全文改用開窗
+（modal）或 tooltip 呈現。
+**權衡與選擇**：選 modal，理由：
+1. Prompt 可能很長（套用 style preset + 多個自訂欄位後可以是好幾百字），
+   tooltip 框很難做到可滾動、版面也容易被視窗邊緣裁切。
+2. tooltip 只能 hover 觸發，手機等觸控裝置沒有 hover，等於完全用不了；
+   modal 點擊（tap）就能開，跨裝置一致。
+3. tooltip 內的文字通常無法選取/複製；modal 是一個獨立的容器，可以正常選
+   字，這次也順手加了「複製」按鈕。
+4. 專案裡已經有圖片 Lightbox 的 overlay／關閉按鈕／Esc 鍵關閉模式
+   （`generate/page.tsx` 的 `Lightbox` 元件），新增的 `PromptModal` 沿用同
+   一套互動模式與 CSS class（`.lightbox-overlay`、`.lightbox-close`），維
+   持介面一致性，不是另外發明一套新的 UI 模式。
+**實作備註**：
+- `src/app/globals.css`：`.prompt-cell` 改成 `white-space: nowrap` +
+  `text-overflow: ellipsis` 的單行截斷（移除原本 `-webkit-line-clamp` 兩行
+  + `.expanded` 展開規則）；新增 `.prompt-modal`／`-header`／`-text`。
+- `src/app/app/generate/page.tsx` 的 `GenerationJobsTable`：移除
+  `expandedId` state 與「展開／收合」按鈕，改成「查看完整 Prompt」按鈕，
+  點擊後用 `promptModalText` state 開啟 `PromptModal`；`PromptModal` 支援
+  點擊遮罩、✕ 按鈕、Esc 鍵關閉，以及一個「複製」按鈕
+  （`navigator.clipboard.writeText`，失敗時靜默忽略，例如非 HTTPS 情境下
+  Clipboard API 不可用）。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`
