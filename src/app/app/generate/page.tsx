@@ -557,10 +557,10 @@ export default function GeneratePage() {
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
   const [page, setPage] = useState(1);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [promptModalText, setPromptModalText] = useState<string | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -609,20 +609,15 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
       </thead>
       <tbody>
         {pageJobs.map((job) => {
-          const expanded = expandedId === job.id;
           return (
             <tr key={job.id}>
               <td>
                 <span className={`status-badge ${job.status}`}>{job.status}</span>
               </td>
               <td>
-                <p className={expanded ? "prompt-cell expanded" : "prompt-cell"}>{job.promptFinal}</p>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setExpandedId(expanded ? null : job.id)}
-                >
-                  {expanded ? "收合" : "展開"}
+                <p className="prompt-cell">{job.promptFinal}</p>
+                <button type="button" className="secondary" onClick={() => setPromptModalText(job.promptFinal)}>
+                  查看完整 Prompt
                 </button>
               </td>
               <td>
@@ -668,7 +663,51 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
       </tbody>
       </table>
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+      {promptModalText && <PromptModal text={promptModalText} onClose={() => setPromptModalText(null)} />}
     </>
+  );
+}
+
+function PromptModal({ text, onClose }: { text: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard API unavailable (e.g. insecure context) — silently ignore
+    }
+  }
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <div className="prompt-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="prompt-modal-header">
+          <strong>完整 Prompt</strong>
+          <button type="button" className="lightbox-close" onClick={onClose} aria-label="關閉">
+            ✕
+          </button>
+        </div>
+        <p className="prompt-modal-text">{text}</p>
+        <div className="button-row">
+          <button type="button" className="secondary" onClick={handleCopy}>
+            {copied ? "已複製！" : "複製"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
