@@ -753,6 +753,13 @@ model），並且要能刪除紀錄、刪除前要有確認視窗。
     `ConfirmModal` 元件（標題／訊息／確認按鈕文字可自訂，互動模式同樣是
     點遮罩／✕／Esc 取消），「清空 API Key」按鈕改成先開
     `ConfirmModal`，確認後才真的呼叫刪除。
+- **RWD 修正**：新增 Provider/Model 欄位後，`.jobs-table` 的自然內容寬度
+  （縮圖 + Prompt 截斷寬度 + 多出的兩欄）超過 `main` 的 `max-width: 720px`，
+  而 `<table>` 不會主動縮小到比內容更窄，於是把整個版面撐寬、破壞 RWD。
+  修法：把表格包進 `.jobs-table-wrap`（`overflow-x: auto`），讓表格在小
+  寬度下變成「卡片內水平滾動」而不是撐爆整個頁面；同時把 `.prompt-cell`
+  的截斷寬度（320px→220px）與 `.job-thumb` 縮圖寬度（160px→100px）縮小，
+  讓表格更容易塞進跟上面表單一樣的寬度。
 
 ---
 

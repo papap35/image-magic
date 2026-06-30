@@ -679,6 +679,7 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
           ))}
         </div>
       </div>
+      <div className="jobs-table-wrap">
       <table className="jobs-table">
       <thead>
         <tr>
@@ -754,6 +755,7 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
         })}
       </tbody>
       </table>
+      </div>
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       {promptModalText && <PromptModal text={promptModalText} onClose={() => setPromptModalText(null)} />}
       {deleteTarget && (
