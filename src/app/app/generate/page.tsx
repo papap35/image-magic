@@ -744,7 +744,11 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
                 )}
                 {job.status === "pending" && <span className="hint">處理中...</span>}
               </td>
-              <td className="hint">{new Date(job.createdAt).toLocaleString()}</td>
+              <td className="hint">
+                {new Date(job.createdAt).toLocaleDateString()}
+                <br />
+                {new Date(job.createdAt).toLocaleTimeString()}
+              </td>
               <td>
                 <button type="button" className="secondary" onClick={() => setDeleteTarget(job)}>
                   刪除
