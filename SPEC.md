@@ -605,6 +605,28 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 
 ---
 
+#### 6t-1. 修正生成頁面前端同一類「非 JSON 回應」錯誤 `[x]`
+**背景**：上一節（6t）只修正了 ComfyUI provider 內部呼叫 ComfyUI 伺服器
+那段程式。使用者改用 OpenAI 生成圖片（仍帶參考圖片）時，回報一樣的
+`Unexpected token 'R', "Request En"... is not valid JSON` 錯誤——但這次發
+生在前端 `/app/app/generate` 頁面自己呼叫站內 API（`POST
+/api/generation-jobs`）的 `fetch`，而不是 ComfyUI provider。根本原因相
+同：參考圖片轉成 base64 後請求 body 太大，被部署環境的反向代理／平台擋
+下回 413 `Request Entity Too Large`（純文字），前端直接 `await
+res.json()` 解析就拋出難懂的例外，使用者完全看不出送出的生成請求其實連
+API route 都沒進去。
+**實作備註**：
+- `src/app/app/generate/page.tsx` 新增模組層級的 `parseJsonResponse(res)`
+  輔助函式（與 6t 的 `comfyui.ts` 版本同樣邏輯：先 `res.text()`，是合法
+  JSON 才 `JSON.parse`，不是的話把原始文字截斷前 200 字包進錯誤訊息拋
+  出），取代頁面中全部 9 處直接呼叫 `res.json()` 的地方（`loadPresets`／
+  `loadJobs`／`loadProviders`／`loadSavedProviders`／style preset 欄位載
+  入／`handleSaveModel`／`handleSaveKey`／`handleDeleteKey`／
+  `handleSubmit`），讓站內任何一個 fetch 遇到反向代理/平台層級的非 JSON
+  錯誤回應時，都能顯示有意義的錯誤訊息而不是解析例外。
+
+---
+
 #### 6u. 修正圖庫看不到任何已生成圖片 `[x]`
 **背景**：使用者回報圖庫（`/app/app/images`）完全沒有顯示任何已生成的圖
 片。追查後發現兩個獨立問題：

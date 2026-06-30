@@ -39,6 +39,24 @@ interface ProviderOption {
 
 const CUSTOM_MODEL_VALUE = "__custom__";
 
+// A reverse proxy or the host platform can reject a request before it
+// reaches our API route (e.g. 413 "Request Entity Too Large" for an
+// oversized reference image) and respond with a plain-text/HTML body
+// instead of JSON. Blindly calling res.json() on that throws a confusing
+// "Unexpected token" SyntaxError, so read the body as text first and only
+// parse it as JSON if it looks like JSON.
+async function parseJsonResponse(res: Response): Promise<any> {
+  const text = await res.text();
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`伺服器回應非預期格式 (${res.status})：${text.slice(0, 200)}`);
+  }
+}
+
 export default function GeneratePage() {
   const [presets, setPresets] = useState<StylePreset[]>([]);
   const [presetId, setPresetId] = useState("");
@@ -75,7 +93,7 @@ export default function GeneratePage() {
 
   async function loadPresets() {
     const res = await fetch("/api/style-presets");
-    const data = await res.json();
+    const data = await parseJsonResponse(res);
     if (res.ok) {
       setPresets(data.presets);
     }
@@ -83,7 +101,7 @@ export default function GeneratePage() {
 
   async function loadJobs() {
     const res = await fetch("/api/generation-jobs");
-    const data = await res.json();
+    const data = await parseJsonResponse(res);
     if (res.ok) {
       setJobs(data.jobs);
     }
@@ -91,7 +109,7 @@ export default function GeneratePage() {
 
   async function loadProviders() {
     const res = await fetch("/api/providers");
-    const data = await res.json();
+    const data = await parseJsonResponse(res);
     if (res.ok) {
       setProviders(data.providers);
       if (data.providers.length > 0) {
@@ -102,7 +120,7 @@ export default function GeneratePage() {
 
   async function loadSavedProviders() {
     const res = await fetch("/api/provider-keys");
-    const data = await res.json();
+    const data = await parseJsonResponse(res);
     if (res.ok) {
       setSavedProviders(data.savedProviders);
       setSavedModels(data.models ?? {});
@@ -121,7 +139,7 @@ export default function GeneratePage() {
       return;
     }
     fetch(`/api/style-presets/${presetId}/fields`)
-      .then((res) => res.json())
+      .then((res) => parseJsonResponse(res))
       .then((data) => setTemplateFields(data.fields ?? []));
   }, [presetId]);
 
@@ -206,7 +224,7 @@ export default function GeneratePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: model || null }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data?.error?.message ?? "儲存模型設定失敗");
       }
@@ -230,7 +248,7 @@ export default function GeneratePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: providerId, apiKey: byokKeyInput.trim() }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data?.error?.message ?? "儲存 API Key 失敗");
       }
@@ -250,7 +268,7 @@ export default function GeneratePage() {
     try {
       const res = await fetch(`/api/provider-keys/${providerId}`, { method: "DELETE" });
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
+        const data = await parseJsonResponse(res).catch(() => null);
         throw new Error(data?.error?.message ?? "清空 API Key 失敗");
       }
       setEditingKey(false);
@@ -291,7 +309,7 @@ export default function GeneratePage() {
           referenceImage: referenceImage ?? undefined,
         }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok && res.status !== 502) {
         throw new Error(data?.error?.message ?? "建立生成請求失敗");
       }
