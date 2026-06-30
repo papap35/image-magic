@@ -30,6 +30,23 @@ function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
 }
 
+// ComfyUI's own error responses are JSON, but a reverse proxy/gateway in
+// front of it (or ComfyUI's request-size limit) can return a plain-text or
+// HTML body instead (e.g. "Request Entity Too Large"). Parsing that as JSON
+// throws a confusing "Unexpected token" SyntaxError, so read the body as text
+// first and only parse it as JSON if it looks like JSON.
+async function parseJsonResponse(response: Response): Promise<Record<string, unknown> | undefined> {
+  const text = await response.text();
+  if (!text) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`ComfyUI 回應非預期格式 (${response.status})：${text.slice(0, 200)}`);
+  }
+}
+
 function buildTxt2ImgWorkflow(prompt: string, model: string, seed: number) {
   return {
     "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: model } },
@@ -112,9 +129,9 @@ export class ComfyUiImageProvider implements ImageProvider {
     form.append("overwrite", "true");
 
     const response = await fetch(`${baseUrl}/upload/image`, { method: "POST", body: form });
-    const raw = await response.json();
+    const raw = await parseJsonResponse(response);
     if (!response.ok || !raw?.name) {
-      throw new Error(raw?.error ?? `ComfyUI image upload failed (${response.status})`);
+      throw new Error((raw?.error as string | undefined) ?? `ComfyUI image upload failed (${response.status})`);
     }
     return raw.name as string;
   }
@@ -125,9 +142,11 @@ export class ComfyUiImageProvider implements ImageProvider {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: workflow, client_id: `image-magic-${Date.now()}` }),
     });
-    const raw = await response.json();
+    const raw = await parseJsonResponse(response);
     if (!response.ok || !raw?.prompt_id) {
-      throw new Error(raw?.error?.message ?? raw?.error ?? `ComfyUI 提交工作流失敗 (${response.status})`);
+      const error = raw?.error as { message?: string } | string | undefined;
+      const message = typeof error === "string" ? error : error?.message;
+      throw new Error(message ?? `ComfyUI 提交工作流失敗 (${response.status})`);
     }
     return raw.prompt_id as string;
   }
@@ -136,7 +155,7 @@ export class ComfyUiImageProvider implements ImageProvider {
     for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
       const response = await fetch(`${baseUrl}/history/${promptId}`);
       if (response.ok) {
-        const raw: Record<string, ComfyHistoryEntry> = await response.json();
+        const raw = (await parseJsonResponse(response)) as Record<string, ComfyHistoryEntry> | undefined;
         const entry = raw?.[promptId];
         const images = Object.values(entry?.outputs ?? {}).flatMap((node) => node.images ?? []);
         if (images.length > 0) {
