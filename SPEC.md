@@ -658,6 +658,25 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 
 ---
 
+#### 6w. 生成等待中加上類 ChatGPT 的圖片佔位動畫 `[x]`
+**背景**：生成圖片等待期間原本只有按鈕文字顯示已等待秒數，使用者希望有
+更像 ChatGPT 生圖時那種「圖片正在畫出來」的視覺回饋，並在角落顯示一步步
+推進的文字（雖然背後其實只是單一個 provider 請求，沒有真的分階段進度）。
+**實作備註**：
+- 新增 `src/components/GeneratingPlaceholder.tsx`：一個方形佔位區塊，背景
+  用 CSS gradient + `background-position` 動畫做出來回掃動的 shimmer 效
+  果（`prefers-reduced-motion: reduce` 時關閉動畫）。
+- 左上角文字徽章依 `elapsedSeconds` 每 4 秒切換一句純裝飾性的步驟敘述
+  （分析描述→規劃構圖→繪製草稿→渲染細節→調整色彩→最後修飾），右下角顯示
+  已等待秒數；純前端視覺效果，不對應任何真實後端進度事件。
+- `src/app/app/generate/page.tsx`：`submitting` 為真時，在原本的提示文字
+  上方插入 `<GeneratingPlaceholder elapsedSeconds={elapsedSeconds} />`，沿
+  用既有的 `elapsedSeconds` 計時器（`setInterval` 每秒 +1，提交時啟動）。
+- 新增 CSS：`.generating-placeholder`／`.generating-placeholder-shimmer`／
+  `.generating-placeholder-overlay`／`-step`／`-timer`（`src/app/globals.css`）。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`
