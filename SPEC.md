@@ -764,6 +764,9 @@ model），並且要能刪除紀錄、刪除前要有確認視窗。
   `word-break: break-word` 在欄寬內換行，而不是被裁掉或撐開欄寬；時間
   欄也拆成日期/時間兩行（`toLocaleDateString` + `toLocaleTimeString`）
   縮短單行寬度。
+- **操作欄簡化**：「刪除」文字按鈕改成單一垃圾桶 emoji（🗑️）的
+  `.icon-button`，搭配 `aria-label`/`title` 保留可存取性與滑鼠提示，視
+  覺上更精簡、也讓本來就窄的「操作」欄（8% 寬）不會擠不下文字。
 
 ---
 

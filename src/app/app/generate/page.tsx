@@ -750,8 +750,14 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
                 {new Date(job.createdAt).toLocaleTimeString()}
               </td>
               <td>
-                <button type="button" className="secondary" onClick={() => setDeleteTarget(job)}>
-                  刪除
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setDeleteTarget(job)}
+                  aria-label="刪除這筆生成紀錄"
+                  title="刪除"
+                >
+                  🗑️
                 </button>
               </td>
             </tr>
