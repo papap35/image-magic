@@ -38,6 +38,7 @@ export async function createAndRunGenerationJob(
     data: {
       userId,
       provider: input.provider,
+      model: credentials.model,
       promptFinal: input.promptFinal,
       params: (input.params as Prisma.InputJsonValue | undefined) ?? undefined,
       status: "pending",
@@ -48,7 +49,7 @@ export async function createAndRunGenerationJob(
   if (!provider) {
     return prisma.generationJob.update({
       where: { id: job.id },
-      data: { status: "failed", error: `Unknown provider: ${input.provider}` },
+      data: { status: "failed", error: `Unknown provider: ${input.provider}`, completedAt: new Date() },
     });
   }
 
@@ -65,7 +66,12 @@ export async function createAndRunGenerationJob(
     } catch (driveErr) {
       return prisma.generationJob.update({
         where: { id: job.id },
-        data: { status: "failed", resultUrl: result.url, error: `Drive upload failed: ${describeError(driveErr)}` },
+        data: {
+          status: "failed",
+          resultUrl: result.url,
+          error: `Drive upload failed: ${describeError(driveErr)}`,
+          completedAt: new Date(),
+        },
       });
     }
 
@@ -74,12 +80,12 @@ export async function createAndRunGenerationJob(
 
     return prisma.generationJob.update({
       where: { id: job.id },
-      data: { status: "success", resultUrl: result.url },
+      data: { status: "success", resultUrl: result.url, completedAt: new Date() },
     });
   } catch (err) {
     return prisma.generationJob.update({
       where: { id: job.id },
-      data: { status: "failed", error: describeError(err) },
+      data: { status: "failed", error: describeError(err), completedAt: new Date() },
     });
   }
 }
@@ -89,4 +95,13 @@ export function listGenerationJobs(userId: string) {
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+}
+
+export async function deleteGenerationJob(userId: string, id: string) {
+  const job = await prisma.generationJob.findFirst({ where: { id, userId } });
+  if (!job) {
+    return null;
+  }
+  await prisma.generationJob.delete({ where: { id } });
+  return job;
 }

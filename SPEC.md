@@ -706,6 +706,63 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 
 ---
 
+#### 6y. 生成紀錄補存 model／完成時間，並可刪除紀錄（含確認視窗）`[x]`
+**背景**：使用者要求生成紀錄多存、多顯示一些欄位（範例舉了 provider 和
+model），並且要能刪除紀錄、刪除前要有確認視窗。
+**欄位評估**：
+- `provider`：`GenerationJob` 早就有這個欄位（建立時就寫入），只是表格沒
+  顯示出來——這部分純粹是補顯示，不需要動 schema。
+- `model`：目前完全沒有對應欄位。使用者選的模型只活在
+  `resolveProviderCredentials` 回的 `credentials.model`（來自
+  `getUserProviderModel`），傳進 `createAndRunGenerationJob` 之後就沒有被
+  存到任何地方——新增 `GenerationJob.model String?`，建立 job 時直接寫入
+  `credentials.model`。
+- 額外補上 `completedAt DateTime?`：目前只有 `createdAt`，使用者完全看不
+  出一個生成請求花了多久，也無法知道「失敗」是卡在 pending 很久還是馬上
+  失敗。在 job 進入 `success`/`failed` 終態時順手寫入
+  `completedAt = new Date()`，之後若要顯示耗時（`completedAt - createdAt`）
+  有資料可用。這次先補欄位，UI 上暫不顯示耗時計算（非本次要求重點）。
+- 沒有新增「是否使用參考圖」欄位：`params`（Json）已經足以回推，且目前
+  UI 還沒有對應的篩選/顯示需求，先不過度設計。
+**實作備註**：
+- `prisma/schema.prisma`：`GenerationJob` 新增 `model String?`、
+  `completedAt DateTime?`；新增 migration
+  `20260630090000_add_generation_job_model_completed_at`。
+- `src/services/generationJobs.ts`：
+  - `createAndRunGenerationJob` 建立 job 時寫入 `model: credentials.model`；
+    所有導致終態（`success`/`failed`，包含 Drive 上傳失敗、provider 未知、
+    provider 呼叫例外）的 `update` 都補上 `completedAt: new Date()`。
+  - 新增 `deleteGenerationJob(userId, id)`：先用
+    `findFirst({ id, userId })` 驗證擁有權，找不到回傳 `null`，找到才執行
+    `prisma.generationJob.delete`——沿用 `images.ts` 既有的擁有權驗證慣例。
+    刪除紀錄不會連動刪除 Drive 上已上傳的圖片本體。
+- `src/app/api/generation-jobs/[id]/route.ts`（新檔）：新增
+  `DELETE /api/generation-jobs/:id`，未登入回 401，找不到（或不是自己的）
+  回 404，成功回 `{ ok: true }`。
+- `src/app/app/generate/page.tsx` 的 `GenerationJobsTable`：
+  - 新增「Provider / Model」欄（顯示 `job.provider`，`job.model` 存在才
+    額外顯示一行）。
+  - 新增「操作」欄的「刪除」按鈕，點擊開啟 `DeleteConfirmModal`（沿用
+    `PromptModal`/`Lightbox` 既有的 `.lightbox-overlay` 互動模式：點遮罩、
+    ✕ 按鈕、Esc 鍵都可取消），內文顯示該筆 Prompt 並提示「此操作無法復
+    原，圖片本身不會被刪除，僅刪除這筆紀錄」，使用者必須按「確認刪除」
+    才會真的呼叫 `DELETE /api/generation-jobs/:id`，成功後重新整理列表
+    （`loadJobs`）。
+  - 順手把「清空 API Key」也補上同樣的確認視窗（原本是按一下就直接打
+    `DELETE /api/provider-keys/:id`，沒有任何確認）：新增共用的
+    `ConfirmModal` 元件（標題／訊息／確認按鈕文字可自訂，互動模式同樣是
+    點遮罩／✕／Esc 取消），「清空 API Key」按鈕改成先開
+    `ConfirmModal`，確認後才真的呼叫刪除。
+- **RWD 修正**：新增 Provider/Model 欄位後，`.jobs-table` 的自然內容寬度
+  （縮圖 + Prompt 截斷寬度 + 多出的兩欄）超過 `main` 的 `max-width: 720px`，
+  而 `<table>` 不會主動縮小到比內容更窄，於是把整個版面撐寬、破壞 RWD。
+  修法：把表格包進 `.jobs-table-wrap`（`overflow-x: auto`），讓表格在小
+  寬度下變成「卡片內水平滾動」而不是撐爆整個頁面；同時把 `.prompt-cell`
+  的截斷寬度（320px→220px）與 `.job-thumb` 縮圖寬度（160px→100px）縮小，
+  讓表格更容易塞進跟上面表單一樣的寬度。
+
+---
+
 ### P2 — 圖庫管理（圖庫該有的基本功能）
 
 #### 7. 標題 / 描述編輯 `[x]`

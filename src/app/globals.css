@@ -631,14 +631,20 @@ button.danger:hover:not(:disabled) {
   border-color: var(--color-primary);
 }
 
-.jobs-table {
+.jobs-table-wrap {
   width: 100%;
-  border-collapse: collapse;
-  background: var(--color-surface);
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  overflow: hidden;
+}
+
+.jobs-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  background: var(--color-surface);
 }
 
 .jobs-table th,
@@ -663,14 +669,14 @@ button.danger:hover:not(:disabled) {
 .prompt-cell {
   margin: 0 0 6px;
   color: var(--color-text);
-  max-width: 320px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .job-thumb {
-  max-width: 160px;
+  max-width: 100px;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   display: block;
