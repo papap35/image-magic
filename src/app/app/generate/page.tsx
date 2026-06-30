@@ -628,6 +628,7 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
   const [page, setPage] = useState(1);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [promptModalText, setPromptModalText] = useState<string | null>(null);
+  const [errorModalText, setErrorModalText] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GenerationJob | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -721,7 +722,12 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
                 )}
                 {job.status === "failed" && (
                   <>
-                    <p role="alert">錯誤：{job.error}</p>
+                    <p role="alert" className="error-cell">錯誤：{job.error}</p>
+                    {job.error && (
+                      <button type="button" className="secondary" onClick={() => setErrorModalText(job.error)}>
+                        查看完整錯誤
+                      </button>
+                    )}
                     {job.resultUrl && (
                       <>
                         <p className="hint">圖片已生成成功，僅上傳雲端硬碟失敗，可以自行下載：</p>
@@ -768,6 +774,9 @@ function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDel
       </div>
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       {promptModalText && <PromptModal text={promptModalText} onClose={() => setPromptModalText(null)} />}
+      {errorModalText && (
+        <PromptModal title="完整錯誤訊息" text={errorModalText} onClose={() => setErrorModalText(null)} />
+      )}
       {deleteTarget && (
         <DeleteConfirmModal
           job={deleteTarget}
@@ -825,7 +834,15 @@ function DeleteConfirmModal({
   );
 }
 
-function PromptModal({ text, onClose }: { text: string; onClose: () => void }) {
+function PromptModal({
+  title = "完整 Prompt",
+  text,
+  onClose,
+}: {
+  title?: string;
+  text: string;
+  onClose: () => void;
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -852,7 +869,7 @@ function PromptModal({ text, onClose }: { text: string; onClose: () => void }) {
     <div className="lightbox-overlay" onClick={onClose}>
       <div className="prompt-modal" onClick={(event) => event.stopPropagation()}>
         <div className="prompt-modal-header">
-          <strong>完整 Prompt</strong>
+          <strong>{title}</strong>
           <button type="button" className="lightbox-close" onClick={onClose} aria-label="關閉">
             ✕
           </button>
