@@ -634,15 +634,15 @@ button.danger:hover:not(:disabled) {
 .jobs-table-wrap {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .jobs-table {
   width: 100%;
-  min-width: 640px;
+  table-layout: fixed;
   border-collapse: collapse;
   background: var(--color-surface);
 }
@@ -650,15 +650,16 @@ button.danger:hover:not(:disabled) {
 .jobs-table th,
 .jobs-table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: 8px 8px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: top;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  overflow: hidden;
 }
 
 .jobs-table th {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -666,17 +667,49 @@ button.danger:hover:not(:disabled) {
   border-bottom: none;
 }
 
+.jobs-table th:nth-child(1),
+.jobs-table td:nth-child(1) {
+  width: 12%;
+}
+
+.jobs-table th:nth-child(2),
+.jobs-table td:nth-child(2) {
+  width: 16%;
+  word-break: break-word;
+}
+
+.jobs-table th:nth-child(3),
+.jobs-table td:nth-child(3) {
+  width: 28%;
+}
+
+.jobs-table th:nth-child(4),
+.jobs-table td:nth-child(4) {
+  width: 22%;
+  word-break: break-word;
+}
+
+.jobs-table th:nth-child(5),
+.jobs-table td:nth-child(5) {
+  width: 14%;
+  word-break: break-word;
+}
+
+.jobs-table th:nth-child(6),
+.jobs-table td:nth-child(6) {
+  width: 8%;
+}
+
 .prompt-cell {
   margin: 0 0 6px;
   color: var(--color-text);
-  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .job-thumb {
-  max-width: 100px;
+  max-width: 100%;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   display: block;

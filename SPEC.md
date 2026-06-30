@@ -756,10 +756,14 @@ model），並且要能刪除紀錄、刪除前要有確認視窗。
 - **RWD 修正**：新增 Provider/Model 欄位後，`.jobs-table` 的自然內容寬度
   （縮圖 + Prompt 截斷寬度 + 多出的兩欄）超過 `main` 的 `max-width: 720px`，
   而 `<table>` 不會主動縮小到比內容更窄，於是把整個版面撐寬、破壞 RWD。
-  修法：把表格包進 `.jobs-table-wrap`（`overflow-x: auto`），讓表格在小
-  寬度下變成「卡片內水平滾動」而不是撐爆整個頁面；同時把 `.prompt-cell`
-  的截斷寬度（320px→220px）與 `.job-thumb` 縮圖寬度（160px→100px）縮小，
-  讓表格更容易塞進跟上面表單一樣的寬度。
+  第一版先用 `.jobs-table-wrap`（`overflow-x: auto`）讓表格局部水平滾
+  動，但使用者回饋希望「不要有捲軸，直接顯示所有內容」。改成
+  `table-layout: fixed` + 各欄固定百分比寬度（狀態12% / Provider·Model
+  16% / Prompt 28% / 結果 22% / 時間 14% / 操作 8%，總和 100%），讓表格
+  永遠不超過容器寬度；各欄內容（model 名稱、錯誤訊息）改用
+  `word-break: break-word` 在欄寬內換行，而不是被裁掉或撐開欄寬；時間
+  欄也拆成日期/時間兩行（`toLocaleDateString` + `toLocaleTimeString`）
+  縮短單行寬度。
 
 ---
 
