@@ -74,12 +74,14 @@ model GenerationJob {
   id           String    @id @default(cuid())
   userId       String
   provider     String
+  model        String?
   promptFinal  String
   params       Json?
   status       JobStatus @default(pending)
   resultUrl    String?
   error        String?
   createdAt    DateTime  @default(now())
+  completedAt  DateTime?
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   images Image[]

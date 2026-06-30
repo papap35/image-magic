@@ -20,11 +20,13 @@ interface PromptField {
 interface GenerationJob {
   id: string;
   provider: string;
+  model: string | null;
   promptFinal: string;
   status: "pending" | "success" | "failed";
   resultUrl: string | null;
   error: string | null;
   createdAt: string;
+  completedAt: string | null;
 }
 
 interface ProviderOption {
@@ -547,7 +549,7 @@ export default function GeneratePage() {
       </form>
 
       <h2>生成紀錄</h2>
-      {jobs.length === 0 ? <p>尚未有任何生成請求。</p> : <GenerationJobsTable jobs={jobs} />}
+      {jobs.length === 0 ? <p>尚未有任何生成請求。</p> : <GenerationJobsTable jobs={jobs} onDeleted={loadJobs} />}
       </>
       )}
     </main>
@@ -556,15 +558,29 @@ export default function GeneratePage() {
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
-function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
+function GenerationJobsTable({ jobs, onDeleted }: { jobs: GenerationJob[]; onDeleted: () => void }) {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
   const [page, setPage] = useState(1);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [promptModalText, setPromptModalText] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GenerationJob | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pageJobs = jobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/generation-jobs/${deleteTarget.id}`, { method: "DELETE" });
+      onDeleted();
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
 
   return (
     <>
@@ -602,9 +618,11 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
       <thead>
         <tr>
           <th>狀態</th>
+          <th>Provider / Model</th>
           <th>Prompt</th>
           <th>結果</th>
           <th>時間</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody>
@@ -613,6 +631,10 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
             <tr key={job.id}>
               <td>
                 <span className={`status-badge ${job.status}`}>{job.status}</span>
+              </td>
+              <td>
+                <div>{job.provider}</div>
+                {job.model && <div className="hint">{job.model}</div>}
               </td>
               <td>
                 <p className="prompt-cell">{job.promptFinal}</p>
@@ -657,6 +679,11 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
                 {job.status === "pending" && <span className="hint">處理中...</span>}
               </td>
               <td className="hint">{new Date(job.createdAt).toLocaleString()}</td>
+              <td>
+                <button type="button" className="secondary" onClick={() => setDeleteTarget(job)}>
+                  刪除
+                </button>
+              </td>
             </tr>
           );
         })}
@@ -664,7 +691,60 @@ function GenerationJobsTable({ jobs }: { jobs: GenerationJob[] }) {
       </table>
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       {promptModalText && <PromptModal text={promptModalText} onClose={() => setPromptModalText(null)} />}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          job={deleteTarget}
+          deleting={deleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </>
+  );
+}
+
+function DeleteConfirmModal({
+  job,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  job: GenerationJob;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+
+  return (
+    <div className="lightbox-overlay" onClick={onCancel}>
+      <div className="prompt-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="prompt-modal-header">
+          <strong>確認刪除這筆生成紀錄？</strong>
+          <button type="button" className="lightbox-close" onClick={onCancel} aria-label="關閉">
+            ✕
+          </button>
+        </div>
+        <p className="prompt-modal-text">{job.promptFinal}</p>
+        <p role="alert">此操作無法復原，圖片本身（已上傳至 Drive）不會被刪除，僅刪除這筆紀錄。</p>
+        <div className="button-row">
+          <button type="button" className="secondary" onClick={onCancel} disabled={deleting}>
+            取消
+          </button>
+          <button type="button" onClick={onConfirm} disabled={deleting}>
+            {deleting ? "刪除中..." : "確認刪除"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
