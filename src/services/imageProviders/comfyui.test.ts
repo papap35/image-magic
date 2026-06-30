@@ -5,8 +5,17 @@ function jsonResponse(ok: boolean, body: unknown, status = 200, headers: Record<
   return {
     ok,
     status,
-    json: async () => body,
+    text: async () => JSON.stringify(body),
     headers: { get: (key: string) => headers[key.toLowerCase()] ?? null },
+  };
+}
+
+function textResponse(ok: boolean, body: string, status = 200) {
+  return {
+    ok,
+    status,
+    text: async () => body,
+    headers: { get: () => null },
   };
 }
 
@@ -91,6 +100,16 @@ describe("ComfyUiImageProvider", () => {
     const provider = new ComfyUiImageProvider();
     await expect(provider.generate({ prompt: "a cat" }, { apiKey: "http://localhost:8188" })).rejects.toThrow(
       "invalid workflow",
+    );
+  });
+
+  it("異常情況：伺服器回應非 JSON 內容（例如反向代理的 413 純文字）時拋出可讀的錯誤訊息", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(textResponse(false, "Request Entity Too Large", 413));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new ComfyUiImageProvider();
+    await expect(provider.generate({ prompt: "a cat" }, { apiKey: "http://localhost:8188" })).rejects.toThrow(
+      "Request Entity Too Large",
     );
   });
 

@@ -593,6 +593,15 @@ Key」這個概念，改把既有 BYOK 的 key 欄位挪用來存放使用者自
 - 新增 `src/services/imageProviders/comfyui.test.ts`：涵蓋文字生圖（驗證工
   作流節點內容）、圖生圖（驗證先上傳圖片、`LoadImage` 節點帶入上傳後的檔
   名）、缺少伺服器網址、提交工作流失敗、自訂模型覆寫，共 5 個測試 case。
+- **修正非 JSON 回應導致的難懂錯誤**：ComfyUI 前面如果有反向代理（或
+  ComfyUI 本身的請求大小限制），遇到圖片太大等情況可能回純文字／HTML
+  （例如 413 `Request Entity Too Large`），但程式原本直接對所有回應呼叫
+  `response.json()`，導致拋出 `Unexpected token 'R', "Request En"... is
+  not valid JSON` 這種看不出原因的例外。新增 `parseJsonResponse` 共用函
+  式，先用 `response.text()` 讀取內容，是合法 JSON 才解析，不是的話直接
+  把原始文字（截斷前 200 字）包進錯誤訊息，三個會解析回應的地方
+  （`uploadReferenceImage`／`submitWorkflow`／`waitForOutput`）都改用這
+  個函式；新增測試 case 驗證非 JSON 回應時錯誤訊息包含原始文字。
 
 ---
 
