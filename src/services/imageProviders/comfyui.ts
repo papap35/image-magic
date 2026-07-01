@@ -13,8 +13,8 @@ export const DEFAULT_MODEL = "sd_xl_base_1.0.safetensors";
 // e.g. a FLUX checkpoint).
 export const MODEL_OPTIONS = ["sd_xl_base_1.0.safetensors", "flux1-dev.safetensors", "sd_xl_turbo_1.0.safetensors"];
 
-const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_ATTEMPTS = 60;
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 200;
 
 interface ComfyHistoryOutputImage {
   filename: string;
