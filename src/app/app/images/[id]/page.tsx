@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Spinner } from "@/components/Spinner";
 import { ImageTagEditor } from "@/components/ImageTagEditor";
@@ -24,6 +24,7 @@ export default function ImageDetailPage() {
   const params = useParams<{ id: string }>();
   const imageId = params.id;
 
+  const router = useRouter();
   const [image, setImage] = useState<ImageDetail | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,9 @@ export default function ImageDetailPage() {
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -83,6 +87,22 @@ export default function ImageDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/images/${imageId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error?.message ?? "刪除失敗");
+      }
+      router.push("/app/images");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "刪除失敗");
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
   if (loading) {
     return (
       <main>
@@ -122,7 +142,29 @@ export default function ImageDetailPage() {
             在 Google Drive 開啟
           </a>
         )}
+        <button type="button" className="danger" onClick={() => setConfirmDelete(true)}>
+          刪除圖片
+        </button>
       </div>
+
+      {confirmDelete && (
+        <div className="lightbox-overlay" onClick={() => setConfirmDelete(false)}>
+          <div className="lightbox-content confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="lightbox-close" onClick={() => setConfirmDelete(false)} aria-label="取消">✕</button>
+            <h2>確認刪除</h2>
+            <p>
+              確定要刪除「{image.title ?? "（未命名）"}」嗎？<br />
+              圖片將從 Google Drive 和圖庫中一併刪除，此操作無法復原。
+            </p>
+            <div className="confirm-modal-actions">
+              <button type="button" onClick={() => setConfirmDelete(false)}>取消</button>
+              <button type="button" className="danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "刪除中..." : "確認刪除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSave} className="card">
         <div className="field">

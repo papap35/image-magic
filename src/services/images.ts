@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { buildGeneratedImageFileName } from "@/lib/driveUpload";
 import { normalizeClearableText } from "@/lib/image";
 import { decryptToken } from "@/lib/tokenCrypto";
-import { downloadDriveFile, ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
+import { deleteDriveFile, downloadDriveFile, ensureAppFolder, refreshAccessToken, uploadImageToDrive } from "@/services/googleDrive";
 import { addTagToImage } from "@/services/tags";
 
 /**
@@ -104,6 +104,22 @@ export async function acceptAiTagSuggestions(userId: string, id: string) {
     await addTagToImage(userId, id, tagName);
   }
   return prisma.image.update({ where: { id }, data: { aiTagSuggestions: [] } });
+}
+
+export async function deleteImage(userId: string, id: string) {
+  const image = await prisma.image.findFirst({ where: { id, userId } });
+  if (!image) {
+    return null;
+  }
+  if (image.driveFileId) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user?.driveRefreshToken) {
+      const accessToken = await refreshAccessToken(decryptToken(user.driveRefreshToken));
+      await deleteDriveFile(accessToken, image.driveFileId);
+    }
+  }
+  await prisma.image.delete({ where: { id } });
+  return image;
 }
 
 /** Discard the AI-suggested tags without applying them. */
