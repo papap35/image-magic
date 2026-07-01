@@ -59,7 +59,7 @@ async function parseJsonResponse(res: Response): Promise<any> {
 
 export default function GeneratePage() {
   const [presets, setPresets] = useState<StylePreset[]>([]);
-  const [presetId, setPresetId] = useState("");
+  const [presetId, setPresetId] = useState(() => (typeof window !== "undefined" ? (localStorage.getItem("generate:presetId") ?? "") : ""));
   const [templateFields, setTemplateFields] = useState<PromptField[]>([]);
 
   const [extraFields, setExtraFields] = useState<PromptFieldInput[]>([]);
@@ -67,7 +67,7 @@ export default function GeneratePage() {
   const [extraValue, setExtraValue] = useState("");
 
   const [providers, setProviders] = useState<ProviderOption[]>([]);
-  const [providerId, setProviderId] = useState("");
+  const [providerId, setProviderId] = useState(() => (typeof window !== "undefined" ? (localStorage.getItem("generate:providerId") ?? "") : ""));
   const [savedProviders, setSavedProviders] = useState<string[]>([]);
   const [byokKeyInput, setByokKeyInput] = useState("");
   const [savingKey, setSavingKey] = useState(false);
@@ -134,6 +134,14 @@ export default function GeneratePage() {
   }, []);
 
   useEffect(() => {
+    localStorage.setItem("generate:providerId", providerId);
+  }, [providerId]);
+
+  useEffect(() => {
+    localStorage.setItem("generate:presetId", presetId);
+  }, [presetId]);
+
+  useEffect(() => {
     if (!presetId) {
       setTemplateFields([]);
       return;
@@ -142,6 +150,13 @@ export default function GeneratePage() {
       .then((res) => parseJsonResponse(res))
       .then((data) => setTemplateFields(data.fields ?? []));
   }, [presetId]);
+
+  // Clear the stored presetId if the preset no longer exists after loading.
+  useEffect(() => {
+    if (presets.length > 0 && presetId && !presets.find((p) => p.id === presetId)) {
+      setPresetId("");
+    }
+  }, [presets, presetId]);
 
   // The generation request is a single blocking fetch with no incremental
   // progress from the provider — this timer is purely so the button shows
