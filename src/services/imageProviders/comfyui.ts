@@ -73,6 +73,81 @@ function buildTxt2ImgWorkflow(prompt: string, model: string, seed: number) {
   };
 }
 
+// FLUX checkpoints aren't all-in-one .safetensors files loadable via
+// CheckpointLoaderSimple — they ship as a separate UNET, a dual text encoder
+// (T5 + CLIP-L), and a VAE, so they need a different node graph. We detect
+// FLUX by filename convention (e.g. "flux1-dev.safetensors") since ComfyUI's
+// /prompt API has no generic way to ask "what kind of checkpoint is this".
+function isFluxModel(model: string): boolean {
+  return /flux/i.test(model);
+}
+
+// Common filenames from the official FLUX.1 release (black-forest-labs);
+// like DEFAULT_MODEL, these must exactly match files already present in the
+// user's ComfyUI models folder (clip/, vae/) or the workflow submission will
+// fail with a "node not found" style error from ComfyUI.
+const FLUX_CLIP_NAME_1 = "t5xxl_fp16.safetensors";
+const FLUX_CLIP_NAME_2 = "clip_l.safetensors";
+const FLUX_VAE_NAME = "ae.safetensors";
+const FLUX_GUIDANCE = 3.5;
+
+function buildFluxTxt2ImgWorkflow(prompt: string, model: string, seed: number) {
+  return {
+    "12": { class_type: "UNETLoader", inputs: { unet_name: model, weight_dtype: "default" } },
+    "11": { class_type: "DualCLIPLoader", inputs: { clip_name1: FLUX_CLIP_NAME_1, clip_name2: FLUX_CLIP_NAME_2, type: "flux" } },
+    "10": { class_type: "VAELoader", inputs: { vae_name: FLUX_VAE_NAME } },
+    "6": { class_type: "CLIPTextEncode", inputs: { text: prompt, clip: ["11", 0] } },
+    "26": { class_type: "FluxGuidance", inputs: { conditioning: ["6", 0], guidance: FLUX_GUIDANCE } },
+    "5": { class_type: "EmptyLatentImage", inputs: { width: 1024, height: 1024, batch_size: 1 } },
+    "13": {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: 20,
+        cfg: 1,
+        sampler_name: "euler",
+        scheduler: "simple",
+        denoise: 1,
+        model: ["12", 0],
+        positive: ["26", 0],
+        negative: ["6", 0],
+        latent_image: ["5", 0],
+      },
+    },
+    "8": { class_type: "VAEDecode", inputs: { samples: ["13", 0], vae: ["10", 0] } },
+    "9": { class_type: "SaveImage", inputs: { filename_prefix: "ImageMagic", images: ["8", 0] } },
+  };
+}
+
+function buildFluxImg2ImgWorkflow(prompt: string, model: string, seed: number, uploadedFilename: string) {
+  return {
+    "12": { class_type: "UNETLoader", inputs: { unet_name: model, weight_dtype: "default" } },
+    "11": { class_type: "DualCLIPLoader", inputs: { clip_name1: FLUX_CLIP_NAME_1, clip_name2: FLUX_CLIP_NAME_2, type: "flux" } },
+    "10": { class_type: "VAELoader", inputs: { vae_name: FLUX_VAE_NAME } },
+    "20": { class_type: "LoadImage", inputs: { image: uploadedFilename } },
+    "21": { class_type: "VAEEncode", inputs: { pixels: ["20", 0], vae: ["10", 0] } },
+    "6": { class_type: "CLIPTextEncode", inputs: { text: prompt, clip: ["11", 0] } },
+    "26": { class_type: "FluxGuidance", inputs: { conditioning: ["6", 0], guidance: FLUX_GUIDANCE } },
+    "13": {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: 20,
+        cfg: 1,
+        sampler_name: "euler",
+        scheduler: "simple",
+        denoise: 0.75,
+        model: ["12", 0],
+        positive: ["26", 0],
+        negative: ["6", 0],
+        latent_image: ["21", 0],
+      },
+    },
+    "8": { class_type: "VAEDecode", inputs: { samples: ["13", 0], vae: ["10", 0] } },
+    "9": { class_type: "SaveImage", inputs: { filename_prefix: "ImageMagic", images: ["8", 0] } },
+  };
+}
+
 function buildImg2ImgWorkflow(prompt: string, model: string, seed: number, uploadedFilename: string) {
   return {
     "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: model } },
@@ -110,10 +185,17 @@ export class ComfyUiImageProvider implements ImageProvider {
     }
     const model = credentials.model || DEFAULT_MODEL;
     const seed = Math.floor(Math.random() * 1e15);
+    const useFlux = isFluxModel(model);
 
-    const workflow = params.referenceImage
-      ? buildImg2ImgWorkflow(params.prompt, model, seed, await this.uploadReferenceImage(baseUrl, params.referenceImage))
-      : buildTxt2ImgWorkflow(params.prompt, model, seed);
+    let workflow: Record<string, unknown>;
+    if (params.referenceImage) {
+      const uploadedFilename = await this.uploadReferenceImage(baseUrl, params.referenceImage);
+      workflow = useFlux
+        ? buildFluxImg2ImgWorkflow(params.prompt, model, seed, uploadedFilename)
+        : buildImg2ImgWorkflow(params.prompt, model, seed, uploadedFilename);
+    } else {
+      workflow = useFlux ? buildFluxTxt2ImgWorkflow(params.prompt, model, seed) : buildTxt2ImgWorkflow(params.prompt, model, seed);
+    }
 
     const promptId = await this.submitWorkflow(baseUrl, workflow);
     const output = await this.waitForOutput(baseUrl, promptId);

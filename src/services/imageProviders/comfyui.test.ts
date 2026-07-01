@@ -129,10 +129,65 @@ describe("ComfyUiImageProvider", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const provider = new ComfyUiImageProvider();
+    await provider.generate({ prompt: "a cat" }, { apiKey: "http://localhost:8188", model: "custom-checkpoint.safetensors" });
+
+    const [, promptOptions] = fetchMock.mock.calls[0];
+    const workflow = JSON.parse(promptOptions.body).prompt;
+    expect(workflow["4"].inputs.ckpt_name).toBe("custom-checkpoint.safetensors");
+  });
+
+  it("正常情況：model 為 FLUX 系列檔名時，改用 UNETLoader/DualCLIPLoader 組 FLUX 工作流", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(true, { prompt_id: "p1" }))
+      .mockResolvedValueOnce(
+        jsonResponse(true, { p1: { outputs: { "9": { images: [{ filename: "a.png", subfolder: "", type: "output" }] } } } }),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => "image/png" },
+        arrayBuffer: async () => new Uint8Array([1]).buffer,
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new ComfyUiImageProvider();
     await provider.generate({ prompt: "a cat" }, { apiKey: "http://localhost:8188", model: "flux1-dev.safetensors" });
 
     const [, promptOptions] = fetchMock.mock.calls[0];
     const workflow = JSON.parse(promptOptions.body).prompt;
-    expect(workflow["4"].inputs.ckpt_name).toBe("flux1-dev.safetensors");
+    expect(workflow["12"].class_type).toBe("UNETLoader");
+    expect(workflow["12"].inputs.unet_name).toBe("flux1-dev.safetensors");
+    expect(workflow["11"].class_type).toBe("DualCLIPLoader");
+    expect(workflow["4"]).toBeUndefined();
+  });
+
+  it("正常情況：FLUX model 搭配參考圖片時，用 LoadImage 接到 FLUX 的 VAEEncode 組 img2img 工作流", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(true, { name: "uploaded.png" }))
+      .mockResolvedValueOnce(jsonResponse(true, { prompt_id: "p1" }))
+      .mockResolvedValueOnce(
+        jsonResponse(true, { p1: { outputs: { "9": { images: [{ filename: "b.png", subfolder: "", type: "output" }] } } } }),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => "image/png" },
+        arrayBuffer: async () => new Uint8Array([4]).buffer,
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new ComfyUiImageProvider();
+    await provider.generate(
+      { prompt: "make it sunset", referenceImage: { base64: "Zm9v", mimeType: "image/png" } },
+      { apiKey: "http://localhost:8188", model: "flux1-dev.safetensors" },
+    );
+
+    const [, promptOptions] = fetchMock.mock.calls[1];
+    const workflow = JSON.parse(promptOptions.body).prompt;
+    expect(workflow["20"].inputs.image).toBe("uploaded.png");
+    expect(workflow["21"].class_type).toBe("VAEEncode");
+    expect(workflow["12"].class_type).toBe("UNETLoader");
   });
 });
