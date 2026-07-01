@@ -142,29 +142,7 @@ export default function ImageDetailPage() {
             在 Google Drive 開啟
           </a>
         )}
-        <button type="button" className="danger" onClick={() => setConfirmDelete(true)}>
-          刪除圖片
-        </button>
       </div>
-
-      {confirmDelete && (
-        <div className="lightbox-overlay" onClick={() => setConfirmDelete(false)}>
-          <div className="lightbox-content confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="lightbox-close" onClick={() => setConfirmDelete(false)} aria-label="取消">✕</button>
-            <h2>確認刪除</h2>
-            <p>
-              確定要刪除「{image.title ?? "（未命名）"}」嗎？<br />
-              圖片將從 Google Drive 和圖庫中一併刪除，此操作無法復原。
-            </p>
-            <div className="confirm-modal-actions">
-              <button type="button" onClick={() => setConfirmDelete(false)}>取消</button>
-              <button type="button" className="danger" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "刪除中..." : "確認刪除"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <form onSubmit={handleSave} className="card">
         <div className="field">
@@ -190,6 +168,31 @@ export default function ImageDetailPage() {
         <h2>標籤</h2>
         <ImageTagEditor imageId={image.id} allTags={allTags} />
       </div>
+
+      <div className="button-row">
+        <button type="button" className="danger" onClick={() => setConfirmDelete(true)}>
+          刪除圖片
+        </button>
+      </div>
+
+      {confirmDelete && (
+        <div className="lightbox-overlay" onClick={() => setConfirmDelete(false)}>
+          <div className="lightbox-content confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="lightbox-close" onClick={() => setConfirmDelete(false)} aria-label="取消">✕</button>
+            <h2>確認刪除</h2>
+            <p>
+              確定要刪除「{image.title ?? "（未命名）"}」嗎？<br />
+              圖片將從 Google Drive 和圖庫中一併刪除，此操作無法復原。
+            </p>
+            <div className="confirm-modal-actions">
+              <button type="button" onClick={() => setConfirmDelete(false)}>取消</button>
+              <button type="button" className="danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "刪除中..." : "確認刪除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
