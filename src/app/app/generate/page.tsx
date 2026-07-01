@@ -376,13 +376,13 @@ export default function GeneratePage() {
               ) : (
                 <div className="field">
                   <label htmlFor="provider-api-key">
-                    {selectedProvider.id === "comfyui" ? "你的 ComfyUI 伺服器網址" : `你的 ${selectedProvider.label} API Key`}
+                    {selectedProvider.id === "comfyui" ? "ComfyUI 連線網址" : `你的 ${selectedProvider.label} API Key`}
                   </label>
                   {selectedProvider.id === "comfyui" && (
                     <p className="hint">
-                      ComfyUI 沒有 API Key，這裡請填伺服器網址（例如
-                      http://192.168.1.50:8188）。本網站的伺服器要能連到這個網址才能生成圖片
-                      ——同一台機器、同一個區域網路，或是透過 VPN／Tunnel 對外開放都可以。
+                      填入可以連到你 ComfyUI 的網址。可以是區域網路 IP（例如
+                      http://192.168.1.50:8188）、ngrok／Cloudflare Tunnel 等公開網址，
+                      或任何本網站伺服器能連到的位址。
                     </p>
                   )}
                   <input
@@ -390,7 +390,7 @@ export default function GeneratePage() {
                     type={selectedProvider.id === "comfyui" ? "text" : "password"}
                     value={byokKeyInput}
                     onChange={(e) => setByokKeyInput(e.target.value)}
-                    placeholder={selectedProvider.id === "comfyui" ? "http://192.168.1.50:8188" : "輸入你自己的 API Key"}
+                    placeholder={selectedProvider.id === "comfyui" ? "http://192.168.1.50:8188 或 https://xxx.trycloudflare.com" : "輸入你自己的 API Key"}
                   />
                   <div className="button-row">
                     <button type="button" onClick={handleSaveKey} disabled={savingKey}>
