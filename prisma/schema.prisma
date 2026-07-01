@@ -78,10 +78,11 @@ model GenerationJob {
   promptFinal  String
   params       Json?
   status       JobStatus @default(pending)
-  resultUrl    String?
-  error        String?
-  createdAt    DateTime  @default(now())
-  completedAt  DateTime?
+  resultUrl      String?
+  error          String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+  comfyPromptId  String?
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   images Image[]

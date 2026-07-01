@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { describeError } from "@/lib/errors";
 import { toUsageDateKey } from "@/lib/generationJob";
 import { getImageProvider } from "@/services/imageProviders";
+import { ComfyUiImageProvider } from "@/services/imageProviders/comfyui";
 import { uploadGeneratedImageToDrive } from "@/services/images";
 import { runImageRecognition } from "@/services/imageRecognition";
 
@@ -88,6 +89,98 @@ export async function createAndRunGenerationJob(
       data: { status: "failed", error: describeError(err), completedAt: new Date() },
     });
   }
+}
+
+/**
+ * ComfyUI-specific: submit the workflow and return the pending job immediately
+ * (with comfyPromptId stored). The caller must poll checkAndFinalizeComfyJob
+ * until the job reaches a terminal state.
+ */
+export async function submitComfyJob(
+  userId: string,
+  input: CreateGenerationJobInput,
+  credentials: ProviderCredentials,
+) {
+  const job = await prisma.generationJob.create({
+    data: {
+      userId,
+      provider: input.provider,
+      model: credentials.model,
+      promptFinal: input.promptFinal,
+      params: (input.params as Prisma.InputJsonValue | undefined) ?? undefined,
+      status: "pending",
+    },
+  });
+
+  try {
+    const provider = new ComfyUiImageProvider();
+    const { promptId } = await provider.submit(
+      { prompt: input.promptFinal, referenceImage: input.referenceImage },
+      credentials,
+    );
+    return prisma.generationJob.update({
+      where: { id: job.id },
+      data: { comfyPromptId: promptId },
+    });
+  } catch (err) {
+    return prisma.generationJob.update({
+      where: { id: job.id },
+      data: { status: "failed", error: describeError(err), completedAt: new Date() },
+    });
+  }
+}
+
+/**
+ * ComfyUI-specific: check ComfyUI once for the job result. If done, finalize
+ * the job (upload to Drive, run recognition, mark success/failed). Returns the
+ * updated job regardless of whether it changed.
+ */
+export async function checkAndFinalizeComfyJob(userId: string, jobId: string, credentials: ProviderCredentials) {
+  const job = await prisma.generationJob.findFirst({ where: { id: jobId, userId } });
+  if (!job || job.status !== "pending" || !job.comfyPromptId) {
+    return job ?? null;
+  }
+
+  const baseUrl = credentials.apiKey ?? "";
+  if (!baseUrl) {
+    return job;
+  }
+
+  const provider = new ComfyUiImageProvider();
+  let result;
+  try {
+    result = await provider.checkResult(baseUrl, job.comfyPromptId);
+  } catch {
+    return job;
+  }
+
+  if (!result) {
+    return job;
+  }
+
+  await incrementUsage(userId, job.provider);
+
+  let image;
+  try {
+    image = await uploadGeneratedImageToDrive(userId, job.id, result.url);
+  } catch (driveErr) {
+    return prisma.generationJob.update({
+      where: { id: job.id },
+      data: {
+        status: "failed",
+        resultUrl: result.url,
+        error: `Drive upload failed: ${describeError(driveErr)}`,
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  await runImageRecognition(image.id);
+
+  return prisma.generationJob.update({
+    where: { id: job.id },
+    data: { status: "success", resultUrl: result.url, completedAt: new Date() },
+  });
 }
 
 export function listGenerationJobs(userId: string) {

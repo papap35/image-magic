@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { getCurrentUserId } from "@/lib/session";
-import { createAndRunGenerationJob, listGenerationJobs } from "@/services/generationJobs";
+import { createAndRunGenerationJob, listGenerationJobs, submitComfyJob } from "@/services/generationJobs";
 import { resolveProviderCredentials } from "@/services/providerCredentials";
 import { resolvePromptEnhancementAuth } from "@/services/promptEnhancementAuth";
 import { enhancePromptWithClaude } from "@/services/promptEnhancement";
@@ -76,11 +76,11 @@ export async function POST(request: Request) {
     referenceImage = { base64: body.referenceImage.base64, mimeType: body.referenceImage.mimeType };
   }
 
-  const job = await createAndRunGenerationJob(
-    userId,
-    { ...body, promptFinal, referenceImage },
-    credentials.credentials,
-  );
+  const input = { ...body, promptFinal, referenceImage };
+  const job =
+    body.provider === "comfyui"
+      ? await submitComfyJob(userId, input, credentials.credentials)
+      : await createAndRunGenerationJob(userId, input, credentials.credentials);
   const status = job.status === "failed" ? 502 : 201;
   return NextResponse.json({ job }, { status });
 }
