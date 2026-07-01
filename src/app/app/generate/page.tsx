@@ -87,6 +87,7 @@ export default function GeneratePage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
+  const [pollingJobId, setPollingJobId] = useState<string | null>(null);
 
   const [referenceImage, setReferenceImage] = useState<{ base64: string; mimeType: string } | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
@@ -169,6 +170,26 @@ export default function GeneratePage() {
     const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => clearInterval(interval);
   }, [submitting]);
+
+  // ComfyUI jobs are submitted asynchronously — poll until the job reaches a
+  // terminal state (success or failed), then refresh the jobs list.
+  useEffect(() => {
+    if (!pollingJobId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/generation-jobs/${pollingJobId}/check`);
+        const data = await parseJsonResponse(res);
+        if (data?.job?.status === "success" || data?.job?.status === "failed") {
+          setPollingJobId(null);
+          setSubmitting(false);
+          setJobs((prev) => prev.map((j) => (j.id === data.job.id ? data.job : j)));
+        }
+      } catch {
+        // network blip — keep polling
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [pollingJobId]);
 
   const basePrompt = presets.find((p) => p.id === presetId)?.basePrompt ?? "";
   const allFields: PromptFieldInput[] = [...templateFields, ...extraFields];
@@ -330,11 +351,19 @@ export default function GeneratePage() {
       }
       if (data.job?.status === "failed") {
         setError(data.job.error ?? "生成失敗");
+        setSubmitting(false);
+      } else if (providerId === "comfyui" && data.job?.status === "pending" && data.job?.comfyPromptId) {
+        // ComfyUI jobs are async — add the pending job to the list and start polling.
+        setJobs((prev) => [data.job, ...prev]);
+        setPollingJobId(data.job.id);
+        // setSubmitting stays true so the button shows elapsed time while polling.
+        return;
+      } else {
+        setSubmitting(false);
       }
       await loadJobs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "建立生成請求失敗");
-    } finally {
       setSubmitting(false);
     }
   }

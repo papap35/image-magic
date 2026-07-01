@@ -179,6 +179,16 @@ export class ComfyUiImageProvider implements ImageProvider {
   readonly name = "comfyui";
 
   async generate(params: GenerateImageParams, credentials: Record<string, string>): Promise<GenerateImageResult> {
+    const { baseUrl, promptId } = await this.submit(params, credentials);
+    const output = await this.waitForOutput(baseUrl, promptId);
+    return this.fetchOutputImage(baseUrl, output);
+  }
+
+  /** Submit a workflow to ComfyUI and return immediately with the promptId. */
+  async submit(
+    params: GenerateImageParams,
+    credentials: Record<string, string>,
+  ): Promise<{ baseUrl: string; promptId: string }> {
     const baseUrl = credentials.apiKey ? normalizeBaseUrl(credentials.apiKey) : "";
     if (!baseUrl) {
       throw new Error("Missing ComfyUI server URL");
@@ -198,10 +208,25 @@ export class ComfyUiImageProvider implements ImageProvider {
     }
 
     const promptId = await this.submitWorkflow(baseUrl, workflow);
-    const output = await this.waitForOutput(baseUrl, promptId);
-    const { url, raw } = await this.fetchOutputImage(baseUrl, output);
+    return { baseUrl, promptId };
+  }
 
-    return { url, raw };
+  /**
+   * Check ComfyUI history once — returns the image result if the job is done,
+   * or null if it's still processing. Never blocks; always returns quickly.
+   */
+  async checkResult(baseUrl: string, promptId: string): Promise<GenerateImageResult | null> {
+    const response = await fetch(`${normalizeBaseUrl(baseUrl)}/history/${promptId}`);
+    if (!response.ok) {
+      return null;
+    }
+    const raw = (await parseJsonResponse(response)) as Record<string, ComfyHistoryEntry> | undefined;
+    const entry = raw?.[promptId];
+    const images = Object.values(entry?.outputs ?? {}).flatMap((node) => node.images ?? []);
+    if (images.length === 0) {
+      return null;
+    }
+    return this.fetchOutputImage(normalizeBaseUrl(baseUrl), images[0]);
   }
 
   private async uploadReferenceImage(baseUrl: string, referenceImage: { base64: string; mimeType: string }): Promise<string> {
