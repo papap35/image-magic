@@ -54,7 +54,7 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   },
   {
     id: "comfyui",
-    label: "ComfyUI（本機/自架伺服器）",
+    label: "ComfyUI",
     authMode: "byok",
     defaultModel: COMFYUI_DEFAULT_MODEL,
     modelOptions: COMFYUI_MODEL_OPTIONS,
