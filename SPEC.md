@@ -859,6 +859,26 @@ SD1.5/SDXL 系列沒問題，但 FLUX 系列模型在 ComfyUI 裡並非單一 ch
   個檔名會正確走 FLUX 分支，改用 `custom-checkpoint.safetensors` 驗證自
   訂 checkpoint 名稱透傳）。
 
+#### 6z-1. 圖庫與詳細頁可刪除圖片（同步刪除 Google Drive） `[x]`
+**背景**：使用者希望能從圖庫列表頁和圖片詳細頁刪除圖片，且刪除時要一併
+把 Google Drive 上的原始檔案也刪掉，不留孤兒檔案。
+**實作備註**：
+- `src/services/googleDrive.ts`：新增 `deleteDriveFile(accessToken, fileId)`，
+  呼叫 `DELETE https://www.googleapis.com/drive/v3/files/{fileId}`；HTTP 404
+  視為已刪除，不拋錯。
+- `src/services/images.ts`：新增 `deleteImage(userId, id)`，先確認圖片屬於
+  該使用者，若有 `driveFileId` 則先刪 Drive 上的檔案，再呼叫
+  `prisma.image.delete`；Drive 沒有授權（無 refresh token）時略過 Drive 刪除
+  直接刪資料庫紀錄。
+- `src/app/api/images/[id]/route.ts`：新增 `DELETE` handler，呼叫
+  `deleteImage(userId, params.id)`，找不到圖片回 404，成功回 `{ ok: true }`。
+- `src/app/app/images/page.tsx`（圖庫列表）：每張縮圖右上角加垃圾桶 🗑️
+  icon button，點擊開啟確認 Modal（`.lightbox-overlay confirm-modal`），確認
+  後呼叫 `DELETE /api/images/:id` 並從列表移除；取消或背景點擊可關閉。
+- `src/app/app/images/[id]/page.tsx`（圖片詳細頁）：在 `button-row` 加入
+  「刪除圖片」按鈕（`.danger`），點擊開啟同樣的確認 Modal，確認刪除後
+  `router.push("/app/images")` 導回圖庫；取消可繼續留在詳細頁。
+
 ---
 
 ### P2 — 圖庫管理（圖庫該有的基本功能）
